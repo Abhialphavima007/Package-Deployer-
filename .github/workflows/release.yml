@@ -115,36 +115,26 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-      - name: Publish the release
-        # Not on pull requests, and not on a version that already has one.
+      - name: Write the release notes
         if: github.event_name != 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.ver.outputs.value }}
-          ZIP: ${{ steps.build.outputs.zip }}
         run: |
-          if gh release view "$VERSION" >/dev/null 2>&1; then
-            echo "Release $VERSION already exists - replacing its asset."
-            gh release upload "$VERSION" "$ZIP" --clobber
-            exit 0
-          fi
-
-          cat > notes.md <<'EOF'
+          cat > notes.md <<'NOTES_END'
           ## Install
 
           1. Download the zip below.
           2. **Right-click it, Properties, tick Unblock**, then extract.
-          3. Double-click **`Install.cmd`** and answer **Yes** when it offers to
-             unblock the files.
+          3. Double-click **`Install.cmd`** and answer **Yes** when it offers to unblock the files.
 
           Installs per user to `%LOCALAPPDATA%\Programs\PackageDeployerStudio`
           (no admin rights), adds Start Menu and desktop shortcuts, and registers
           an entry in **Apps and features**.
 
-          Microsoft's `PackageDeployertool` folder is not redistributed here. Get
-          it from the [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
-          and extract its `tools\` folder. Drop it next to `Install.cmd` before
-          installing and the installer copies it for you.
+          The installer also configures Microsoft's Package Deployer tool: it looks
+          beside `Install.cmd`, then in your NuGet cache, and otherwise offers to let
+          you browse for `PackageDeployer.exe`. That tool is not redistributed here -
+          get it from the
+          [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
+          and extract its `tools\` folder. Deploying with the PAC CLI does not need it.
 
           ### Requirements
 
@@ -155,10 +145,53 @@ jobs:
           ### Uninstall
 
           Apps and features, or `Install.ps1 -Uninstall`.
-          EOF
+          NOTES_END
+          echo "--- notes.md ---"; cat notes.md
 
-          echo "Creating release $VERSION"
-          gh release create "$VERSION" "$ZIP" \
-            --title "Package Deployer Studio $VERSION" \
-            --notes-file notes.md \
-            --target "$GITHUB_SHA"
+      - name: Publish the release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.value }}
+          ZIP: ${{ steps.build.outputs.zip }}
+        run: |
+          set +e   # handle failures explicitly so the cause can be explained
+
+          explain_failure() {
+            echo "::error::Could not publish release $VERSION (exit $1)."
+            echo "::error::Most likely cause: this repository's Actions token is read-only."
+            echo "::error::Fix: Settings > Actions > General > Workflow permissions >"
+            echo "::error::     select 'Read and write permissions', Save, then re-run this workflow."
+            echo "::error::The zip is still attached to this run under Artifacts, so nothing is lost."
+          }
+
+          echo "Repository : $GITHUB_REPOSITORY"
+          echo "Version    : $VERSION"
+          echo "Asset      : $ZIP"
+
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists - replacing its asset."
+            OUT=$(gh release upload "$VERSION" "$ZIP" --clobber 2>&1); rc=$?
+            echo "$OUT"
+            if [ $rc -ne 0 ]; then explain_failure $rc; exit $rc; fi
+            echo "Asset updated."
+            exit 0
+          fi
+
+          # If the tag already exists, create the release from it rather than
+          # pointing at this commit - gh refuses to move an existing tag.
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists - creating the release from it."
+            TARGET=()
+          else
+            echo "Creating tag $VERSION at $GITHUB_SHA."
+            TARGET=(--target "$GITHUB_SHA")
+          fi
+
+          OUT=$(gh release create "$VERSION" "$ZIP" \
+                  --title "Package Deployer Studio $VERSION" \
+                  --notes-file notes.md \
+                  "${TARGET[@]}" 2>&1); rc=$?
+          echo "$OUT"
+          if [ $rc -ne 0 ]; then explain_failure $rc; exit $rc; fi
+          echo "Release $VERSION published."

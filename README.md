@@ -223,16 +223,30 @@ workflow from the **Actions** tab.
 Every push additionally uploads the zip as a build artifact, so there is always
 something downloadable from the Actions run even without a version bump.
 
-### If no release appears
+### If the run fails at "Publish the release"
 
-- **Check the Actions tab first.** A red run means the parse checks failed;
-  the error names the file and line.
-- **Settings → Actions → General → Workflow permissions** must be
-  *Read and write permissions*. Without it `gh release create` gets a 403.
+**This is almost always repository permissions.** By default a new repo gives
+Actions a read-only token, and `gh release create` gets a 403.
+
+> **Settings → Actions → General → Workflow permissions →
+> "Read and write permissions" → Save**, then re-run the workflow.
+
+The workflow prints exactly this instruction in the run's **Annotations** box
+when publishing fails, and the zip is still attached to the run under
+**Artifacts** either way — a failed publish never loses the build.
+
+Other things to check:
+
 - The workflow only runs on `main` or `master`. On another branch name, add it
   to the `branches:` list in `.github/workflows/release.yml`.
 - Make sure `.github/workflows/release.yml` was actually committed — it sits in
   a dot-folder and is easy to miss.
+- A red run *before* the artifact appears means a parse check failed; the
+  annotation names the file and line.
+
+The **"Node.js 20 is deprecated"** warning is cosmetic. GitHub already runs
+those actions on Node 24; nothing is broken and the run does not fail because
+of it.
 
 ---
 
