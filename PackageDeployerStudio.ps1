@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.2.0'
+$script:AppVersion = '1.2.2'
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.IO.Compression.FileSystem
 
@@ -124,34 +124,34 @@ $xaml = @'
   <Window.Resources>
 
     <Style TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style x:Key="H1" TargetType="TextBlock">
       <Setter Property="FontSize" Value="20"/><Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
     </Style>
     <Style x:Key="H2" TargetType="TextBlock">
       <Setter Property="FontSize" Value="13.5"/><Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="Margin" Value="0,0,0,10"/>
     </Style>
     <Style x:Key="Hint" TargetType="TextBlock">
       <Setter Property="FontSize" Value="11.5"/>
-      <Setter Property="Foreground" Value="{StaticResource InkSoft}"/>
+      <Setter Property="Foreground" Value="{DynamicResource InkSoft}"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style x:Key="Label" TargetType="TextBlock">
       <Setter Property="FontSize" Value="12"/>
-      <Setter Property="Foreground" Value="{StaticResource InkSoft}"/>
+      <Setter Property="Foreground" Value="{DynamicResource InkSoft}"/>
       <Setter Property="Margin" Value="0,0,0,4"/>
     </Style>
 
     <Style TargetType="TextBox">
-      <Setter Property="Background" Value="{StaticResource Field}"/>
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-      <Setter Property="CaretBrush" Value="{StaticResource Ink}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource BtnBorder}"/>
+      <Setter Property="Background" Value="{DynamicResource Field}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+      <Setter Property="CaretBrush" Value="{DynamicResource Ink}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BtnBorder}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Padding" Value="8,6"/>
       <Setter Property="FontSize" Value="12.5"/>
@@ -164,7 +164,7 @@ $xaml = @'
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Accent}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -173,7 +173,7 @@ $xaml = @'
     </Style>
 
     <Style TargetType="CheckBox">
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="FontSize" Value="12.5"/>
       <Setter Property="VerticalAlignment" Value="Center"/>
       <Setter Property="Margin" Value="0,3,18,3"/>
@@ -186,9 +186,9 @@ $xaml = @'
     </Style>
 
     <Style x:Key="BtnBase" TargetType="Button">
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-      <Setter Property="Background" Value="{StaticResource BtnBg}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource BtnBorder}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+      <Setter Property="Background" Value="{DynamicResource BtnBg}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BtnBorder}"/>
       <Setter Property="FontSize" Value="12.5"/>
       <Setter Property="Padding" Value="14,7"/>
       <Setter Property="Margin" Value="0,0,8,8"/>
@@ -213,20 +213,20 @@ $xaml = @'
     </Style>
     <Style TargetType="Button" BasedOn="{StaticResource BtnBase}"/>
     <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-      <Setter Property="Background" Value="{StaticResource Accent}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-      <Setter Property="Foreground" Value="{StaticResource AccentInk}"/>
+      <Setter Property="Background" Value="{DynamicResource Accent}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+      <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-      <Setter Property="Background" Value="{StaticResource Danger}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Danger}"/>
-      <Setter Property="Foreground" Value="{StaticResource AccentInk}"/>
+      <Setter Property="Background" Value="{DynamicResource Danger}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Danger}"/>
+      <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
     </Style>
     <Style x:Key="BtnGo" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-      <Setter Property="Background" Value="{StaticResource Success}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Success}"/>
-      <Setter Property="Foreground" Value="{StaticResource AccentInk}"/>
+      <Setter Property="Background" Value="{DynamicResource Success}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Success}"/>
+      <Setter Property="Foreground" Value="{DynamicResource AccentInk}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style x:Key="BtnTiny" TargetType="Button" BasedOn="{StaticResource BtnBase}">
@@ -242,8 +242,8 @@ $xaml = @'
     </Style>
 
     <Style x:Key="CardBorder" TargetType="Border">
-      <Setter Property="Background" Value="{StaticResource Surface}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="Background" Value="{DynamicResource Surface}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Padding" Value="18"/>
@@ -265,11 +265,11 @@ $xaml = @'
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="bd" Property="Background" Value="{StaticResource Hover}"/>
+                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hover}"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentSoft}"/>
-                <Setter TargetName="bar" Property="Background" Value="{StaticResource Accent}"/>
+                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentSoft}"/>
+                <Setter TargetName="bar" Property="Background" Value="{DynamicResource Accent}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -278,35 +278,35 @@ $xaml = @'
     </Style>
 
     <Style TargetType="ListView">
-      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Background" Value="{StaticResource Surface}"/>
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Background" Value="{DynamicResource Surface}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="FontSize" Value="12"/>
     </Style>
     <Style TargetType="ListViewItem">
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="Padding" Value="4,3"/>
     </Style>
     <Style TargetType="GridViewColumnHeader">
-      <Setter Property="Background" Value="{StaticResource Surface2}"/>
-      <Setter Property="Foreground" Value="{StaticResource InkSoft}"/>
+      <Setter Property="Background" Value="{DynamicResource Surface2}"/>
+      <Setter Property="Foreground" Value="{DynamicResource InkSoft}"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="FontSize" Value="11.5"/>
       <Setter Property="Padding" Value="8,6"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
       <Setter Property="BorderThickness" Value="0,0,1,1"/>
     </Style>
     <Style TargetType="ListBox">
-      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-      <Setter Property="Background" Value="{StaticResource Surface}"/>
-      <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+      <Setter Property="Background" Value="{DynamicResource Surface}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="FontSize" Value="12"/>
     </Style>
 
     <Style x:Key="NavIconPath" TargetType="Path">
-      <Setter Property="Stroke" Value="{StaticResource NavIcon}"/>
+      <Setter Property="Stroke" Value="{DynamicResource NavIcon}"/>
       <Setter Property="StrokeThickness" Value="1.5"/>
       <Setter Property="Fill" Value="Transparent"/>
       <Setter Property="Width" Value="20"/><Setter Property="Height" Value="20"/>
@@ -322,49 +322,49 @@ $xaml = @'
           <ColumnDefinition Width="62"/><ColumnDefinition Width="64"/><ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <TextBlock Grid.Column="0" Text="{Binding Time}" FontSize="11"
-                   Foreground="{StaticResource InkSoft}" VerticalAlignment="Top" Margin="0,1,0,0"/>
+                   Foreground="{DynamicResource InkSoft}" VerticalAlignment="Top" Margin="0,1,0,0"/>
         <Border   Grid.Column="1" x:Name="badge" CornerRadius="3" Padding="6,1" Margin="0,0,10,0"
                   HorizontalAlignment="Left" VerticalAlignment="Top"
-                  Background="{StaticResource Surface2}">
+                  Background="{DynamicResource Surface2}">
           <TextBlock x:Name="btxt" Text="{Binding Level}" FontSize="9.5" FontWeight="SemiBold"
-                     Foreground="{StaticResource InkSoft}"/>
+                     Foreground="{DynamicResource InkSoft}"/>
         </Border>
         <TextBlock Grid.Column="2" x:Name="msg" Text="{Binding Message}" TextWrapping="Wrap"
-                   FontSize="12" Foreground="{StaticResource Ink}"/>
+                   FontSize="12" Foreground="{DynamicResource Ink}"/>
       </Grid>
       <DataTemplate.Triggers>
         <DataTrigger Binding="{Binding Level}" Value="OK">
-          <Setter TargetName="badge" Property="Background" Value="{StaticResource SuccessSoft}"/>
-          <Setter TargetName="btxt"  Property="Foreground" Value="{StaticResource Success}"/>
+          <Setter TargetName="badge" Property="Background" Value="{DynamicResource SuccessSoft}"/>
+          <Setter TargetName="btxt"  Property="Foreground" Value="{DynamicResource Success}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="FAIL">
-          <Setter TargetName="badge" Property="Background" Value="{StaticResource DangerSoft}"/>
-          <Setter TargetName="btxt"  Property="Foreground" Value="{StaticResource Danger}"/>
-          <Setter TargetName="msg"   Property="Foreground" Value="{StaticResource Danger}"/>
+          <Setter TargetName="badge" Property="Background" Value="{DynamicResource DangerSoft}"/>
+          <Setter TargetName="btxt"  Property="Foreground" Value="{DynamicResource Danger}"/>
+          <Setter TargetName="msg"   Property="Foreground" Value="{DynamicResource Danger}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="WARN">
-          <Setter TargetName="badge" Property="Background" Value="{StaticResource WarnSoft}"/>
-          <Setter TargetName="btxt"  Property="Foreground" Value="{StaticResource Warn}"/>
+          <Setter TargetName="badge" Property="Background" Value="{DynamicResource WarnSoft}"/>
+          <Setter TargetName="btxt"  Property="Foreground" Value="{DynamicResource Warn}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="CMD">
-          <Setter TargetName="badge" Property="Background" Value="{StaticResource AccentSoft}"/>
-          <Setter TargetName="btxt"  Property="Foreground" Value="{StaticResource Accent}"/>
+          <Setter TargetName="badge" Property="Background" Value="{DynamicResource AccentSoft}"/>
+          <Setter TargetName="btxt"  Property="Foreground" Value="{DynamicResource Accent}"/>
           <Setter TargetName="msg"   Property="FontFamily" Value="Consolas"/>
-          <Setter TargetName="msg"   Property="Foreground" Value="{StaticResource Accent}"/>
+          <Setter TargetName="msg"   Property="Foreground" Value="{DynamicResource Accent}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="OUT">
           <Setter TargetName="badge" Property="Background" Value="Transparent"/>
           <Setter TargetName="btxt"  Property="Text" Value=""/>
           <Setter TargetName="msg"   Property="FontFamily" Value="Consolas"/>
           <Setter TargetName="msg"   Property="FontSize" Value="11"/>
-          <Setter TargetName="msg"   Property="Foreground" Value="{StaticResource Mono}"/>
+          <Setter TargetName="msg"   Property="Foreground" Value="{DynamicResource Mono}"/>
         </DataTrigger>
         <DataTrigger Binding="{Binding Level}" Value="STEP">
           <Setter TargetName="badge" Property="Background" Value="Transparent"/>
           <Setter TargetName="btxt"  Property="Text" Value=""/>
           <Setter TargetName="msg"   Property="FontWeight" Value="SemiBold"/>
           <Setter TargetName="msg"   Property="FontSize" Value="12.5"/>
-          <Setter TargetName="msg"   Property="Foreground" Value="{StaticResource Accent}"/>
+          <Setter TargetName="msg"   Property="Foreground" Value="{DynamicResource Accent}"/>
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
@@ -377,8 +377,8 @@ $xaml = @'
     </Grid.ColumnDefinitions>
 
     <!-- ================= SIDEBAR ================= -->
-    <Border Grid.Column="0" x:Name="Sidebar" Background="{StaticResource Surface}"
-            BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+    <Border Grid.Column="0" x:Name="Sidebar" Background="{DynamicResource Surface}"
+            BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel>
 
         <Grid DockPanel.Dock="Top" Margin="10,14,10,10">
@@ -393,15 +393,15 @@ $xaml = @'
           </StackPanel>
         </Grid>
 
-        <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="14,10">
+        <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="14,10">
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Ellipse Grid.Column="0" x:Name="EnvDot" Width="9" Height="9" Fill="{StaticResource Danger}"
+            <Ellipse Grid.Column="0" x:Name="EnvDot" Width="9" Height="9" Fill="{DynamicResource Danger}"
                      VerticalAlignment="Center" ToolTip="Connection state"/>
             <StackPanel Grid.Column="1" x:Name="EnvBox" Margin="9,0,0,0">
-              <TextBlock Text="CONNECTED TO" FontSize="9" Foreground="{StaticResource InkSoft}" FontWeight="SemiBold"/>
+              <TextBlock Text="CONNECTED TO" FontSize="9" Foreground="{DynamicResource InkSoft}" FontWeight="SemiBold"/>
               <TextBlock x:Name="TbEnvChip" Text="Not connected" FontSize="11.5" TextWrapping="Wrap"
-                         Foreground="{StaticResource Danger}" Margin="0,2,0,0"/>
+                         Foreground="{DynamicResource Danger}" Margin="0,2,0,0"/>
             </StackPanel>
           </Grid>
         </Border>
@@ -455,7 +455,7 @@ $xaml = @'
       </Grid.RowDefinitions>
 
       <!-- header -->
-      <Border Grid.Row="0" Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}"
+      <Border Grid.Row="0" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}"
               BorderThickness="0,0,0,1" Padding="24,14">
         <DockPanel>
           <StackPanel DockPanel.Dock="Left">
@@ -573,7 +573,7 @@ $xaml = @'
                   <Button  Grid.Column="2" x:Name="BtnPkgZip"    Content="Zip..."    Margin="0"/>
                 </Grid>
 
-                <Border Background="{StaticResource Surface2}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                <Border Background="{DynamicResource Surface2}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                         CornerRadius="4" Padding="12" Margin="0,0,0,14">
                   <StackPanel>
                     <TextBlock Text="Tool folder state" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
@@ -731,8 +731,8 @@ $xaml = @'
         </ScrollViewer>
 
         <!-- busy overlay, covers the page area only so the activity log stays readable -->
-        <Border x:Name="Overlay" Background="{StaticResource Scrim}" Visibility="Collapsed">
-          <Border Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+        <Border x:Name="Overlay" Background="{DynamicResource Scrim}" Visibility="Collapsed">
+          <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
                   CornerRadius="8" Padding="26,20" Width="380" Height="128"
                   HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel VerticalAlignment="Center">
@@ -740,16 +740,16 @@ $xaml = @'
               <TextBlock x:Name="TbOverlaySub" Style="{StaticResource Hint}" Margin="0,4,0,12"
                          Text="Progress appears in the activity log below."/>
               <ProgressBar x:Name="PbBusy" Height="4" IsIndeterminate="True" BorderThickness="0"
-                           Foreground="{StaticResource Accent}" Background="{StaticResource Surface2}"/>
+                           Foreground="{DynamicResource Accent}" Background="{DynamicResource Surface2}"/>
             </StackPanel>
           </Border>
         </Border>
       </Grid>
 
       <!-- activity panel -->
-      <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="{StaticResource Splitter}"
+      <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="{DynamicResource Splitter}"
                     VerticalAlignment="Center" ResizeBehavior="PreviousAndNext"/>
-      <Border Grid.Row="3" Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+      <Border Grid.Row="3" Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
         <Grid Margin="24,10,24,14">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <DockPanel Grid.Row="0" Margin="0,0,0,8">
@@ -770,8 +770,8 @@ $xaml = @'
               <Button x:Name="BtnClearLog" Content="Clear"         Style="{StaticResource BtnTiny}"/>
             </WrapPanel>
           </DockPanel>
-          <Border Grid.Row="1" x:Name="LogHost" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4">
-            <ListView x:Name="LvLog" BorderThickness="0" Background="{StaticResource Surface2}"
+          <Border Grid.Row="1" x:Name="LogHost" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="4">
+            <ListView x:Name="LvLog" BorderThickness="0" Background="{DynamicResource Surface2}"
                       ItemTemplate="{StaticResource ActivityTemplate}"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
               <ListView.ItemContainerStyle>
@@ -791,27 +791,45 @@ $xaml = @'
 '@
 
 # ---------------------------------------------------------------------------
-# Build window. Brushes are injected before parsing so StaticResource resolves,
-# then mutated in place on theme change - every control shares the instance.
+# Build window
+#
+# Theming works by swapping a whole merged ResourceDictionary, which is the
+# canonical WPF approach and avoids two traps that both bit earlier versions:
+#
+#   1. Brushes loaded from XAML are FROZEN, so "$brush.Color = ..." throws
+#      "Cannot set a property ... because it is in a read-only state."
+#   2. Assigning a PowerShell-built brush into ResourceDictionary's
+#      object-typed indexer stores the PSObject *wrapper*, not the brush.
+#      WPF then rejects it with "'#FFFAFAFA' is not a valid value for
+#      property 'Background'" - that string is the wrapper's ToString().
+#
+# Building each palette with XamlReader.Parse keeps PowerShell object
+# marshalling out of the picture completely: the dictionary and everything in
+# it are created by WPF itself.
 # ---------------------------------------------------------------------------
-# The palette is written into the top of Window.Resources before parsing, so
-# every StaticResource in the markup resolves. After load we grab the live
-# brush instances - a theme switch then just changes each brush's Color and
-# every control that shares the instance repaints itself.
-$resXaml = New-Object System.Text.StringBuilder
-foreach ($k in ($script:Palettes.Light.Keys | Sort-Object)) {
-    [void]$resXaml.AppendLine(('    <SolidColorBrush x:Key="{0}" Color="{1}"/>' -f $k, $script:Palettes.Light[$k]))
+function New-ThemeDictionary {
+    param([hashtable]$Palette)
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine('<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">')
+    foreach ($k in ($Palette.Keys | Sort-Object)) {
+        [void]$sb.AppendLine(('  <SolidColorBrush x:Key="{0}" Color="{1}"/>' -f $k, $Palette[$k]))
+    }
+    [void]$sb.AppendLine('</ResourceDictionary>')
+    return [System.Windows.ResourceDictionary]([Windows.Markup.XamlReader]::Parse($sb.ToString()))
 }
-$xaml = $xaml.Replace('<Window.Resources>', "<Window.Resources>`r`n" + $resXaml.ToString())
 
 $reader = New-Object System.Xml.XmlNodeReader ([xml]$xaml)
 $win    = [Windows.Markup.XamlReader]::Load($reader)
 
-$script:Brushes = @{}
-foreach ($k in $script:Palettes.Light.Keys) { $script:Brushes[$k] = $win.FindResource($k) }
-# Set on the Window in code: attributes on the root tag are parsed before
-# Window.Resources exists, so a StaticResource there would not resolve.
-$win.Background = $script:Brushes['WinBg']
+# Every colour in the markup is a DynamicResource, so it resolves lazily - the
+# palette only has to be present before the first render, not before parsing.
+$script:ThemeDicts = @{}
+foreach ($t in @('Light','Dark')) { $script:ThemeDicts[$t] = New-ThemeDictionary $script:Palettes[$t] }
+$win.Resources.MergedDictionaries.Add($script:ThemeDicts['Light'])
+
+# Attributes on the root tag are parsed before Window.Resources exists, so the
+# window background is bound here instead of in the markup.
+$win.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'WinBg')
 
 $ctl = @{}
 foreach ($n in @(
@@ -842,11 +860,11 @@ $ctl.LvLog.ItemsSource = $script:View
 # ---------------------------------------------------------------------------
 function Set-Theme {
     param([ValidateSet('Light','Dark')][string]$Name)
-    $p = $script:Palettes[$Name]
-    foreach ($k in $p.Keys) {
-        $b = $script:Brushes[$k]
-        if ($b) { $b.Color = [System.Windows.Media.ColorConverter]::ConvertFromString($p[$k]) }
-    }
+    # Swap the whole palette dictionary. MergedDictionaries is a strongly typed
+    # Collection[ResourceDictionary], so nothing can slip through wrapped.
+    $md = $win.Resources.MergedDictionaries
+    $md.Clear()
+    $md.Add($script:ThemeDicts[$Name])
     $script:Theme = $Name
     $ctl.TbTheme.Text = if ($Name -eq 'Light') { 'Dark' } else { 'Light' }
     # sun when dark is active, crescent moon when light is active
@@ -1108,7 +1126,8 @@ function Start-Work {
       running - that single guard is what stops overlapping actions from
       corrupting each other's state.
     #>
-    param([string]$Title, [scriptblock]$Work, [hashtable]$Arguments = @{}, [scriptblock]$OnDone = $null)
+    param([string]$Title, [scriptblock]$Work, [hashtable]$Arguments = @{},
+          [scriptblock]$OnDone = $null, [hashtable]$Context = @{})
 
     if ($script:Busy) {
         Add-Activity 'WARN' "'$($script:BusyTitle)' is still running. Wait for it to finish."
@@ -1132,7 +1151,7 @@ function Start-Work {
         $ps.Runspace = $rs
         [void]$ps.AddScript($script:Prelude + "`r`n" + $Work.ToString())
 
-        $script:Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); OnDone = $OnDone }
+        $script:Job = @{ PS = $ps; RS = $rs; Handle = $ps.BeginInvoke(); OnDone = $OnDone; Context = $Context }
         $script:Timer.Start()
     } catch {
         Write-Err $_ 'starting background work'
@@ -1183,7 +1202,11 @@ $script:Timer.Add_Tick({
         # Every worker returns a hashtable as its last output; ignore anything else.
         $payload = $null
         foreach ($r in @($result)) { if ($r -is [hashtable]) { $payload = $r } }
-        try { & $job.OnDone $payload } catch { Write-Err $_ 'completing work' }
+        # The callback gets (result, context). Context carries whatever the
+        # caller needed to remember - never a closure: GetNewClosure binds the
+        # scriptblock to a new dynamic module, and $script: inside it then
+        # points at that module rather than at this script's scope.
+        try { & $job.OnDone $payload $job.Context } catch { Write-Err $_ 'completing work' }
     }
   } catch {
     try {
@@ -1284,16 +1307,17 @@ function Update-State {
 }
 
 function Update-EnvChip {
+    # SetResourceReference is the code equivalent of DynamicResource, so these
+    # two follow the theme instead of freezing to whatever was current.
+    $key = if ($script:CurrentEnv) { 'Success' } else { 'Danger' }
+    $ctl.TbEnvChip.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, $key)
+    $ctl.EnvDot.SetResourceReference([System.Windows.Shapes.Shape]::FillProperty, $key)
     if ($script:CurrentEnv) {
         $ctl.TbEnvChip.Text = $script:CurrentEnv.Name
-        $ctl.TbEnvChip.Foreground = $script:Brushes['Success']
-        $ctl.EnvDot.Fill          = $script:Brushes['Success']
-        $ctl.EnvDot.ToolTip       = "Connected to $($script:CurrentEnv.Name)"
+        $ctl.EnvDot.ToolTip = "Connected to $($script:CurrentEnv.Name)"
     } else {
         $ctl.TbEnvChip.Text = 'Not connected'
-        $ctl.TbEnvChip.Foreground = $script:Brushes['Danger']
-        $ctl.EnvDot.Fill          = $script:Brushes['Danger']
-        $ctl.EnvDot.ToolTip       = 'Not connected'
+        $ctl.EnvDot.ToolTip = 'Not connected'
     }
 }
 
@@ -1667,18 +1691,17 @@ function Select-Environment {
     if (-not $row)                { Add-Activity 'FAIL' "Pick an environment from the list first."; return }
     if (-not (Test-EnvUrl $row.Url)) { return }
     $url = $row.Url; $name = $row.Name
-    # The closure is parenthesised: in argument mode PowerShell will not bind a
-    # method call written directly on a scriptblock literal.
     $done = {
-        param($r)
+        param($r, $c)
         if ($r -and $r.ok) {
-            $script:CurrentEnv = $row
+            $script:CurrentEnv = $c.Row
             Update-EnvChip
-            Add-Activity 'OK' "Target is now: $name"
+            Add-Activity 'OK' "Target is now: $($c.Row.Name)"
             Get-Solutions
         }
-    }.GetNewClosure()
-    Start-Work "Selecting $name" $script:WorkPac @{ AppDir = $script:AppDir; Args = @('env','select','--environment',$url) } $done
+    }
+    Start-Work "Selecting $name" $script:WorkPac `
+        @{ AppDir = $script:AppDir; Args = @('env','select','--environment',$url) } $done @{ Row = $row }
 }
 
 function Get-Solutions {
@@ -1723,17 +1746,17 @@ function Invoke-ExportSolutions {
 
     $toPkg = [bool]$ctl.ChkExpToPackage.IsChecked
     $done = {
-        param($r)
-        if ($r -and $r.made -and $toPkg) {
+        param($r, $c)
+        if ($r -and $r.made -and $c.ToPackage) {
             foreach ($f in @($r.made)) {
                 if (-not $ctl.LstSolutions.Items.Contains($f)) { [void]$ctl.LstSolutions.Items.Add($f) }
             }
             Add-Activity 'OK' "added $(@($r.made).Count) file(s) to the Create Package list"
             Save-Settings
         }
-    }.GetNewClosure()
+    }
     Start-Work "Exporting $($picked.Count) solution(s)" $script:WorkExport `
-        @{ AppDir = $script:AppDir; Dir = $dir; Solutions = $picked; Kinds = $kinds } $done
+        @{ AppDir = $script:AppDir; Dir = $dir; Solutions = $picked; Kinds = $kinds } $done @{ ToPackage = $toPkg }
 }
 
 function Invoke-ImportSolution {
@@ -1790,14 +1813,19 @@ function Invoke-CreatePackage {
     }
 }
 
+$script:DoneStep = {
+    param($r, $c)
+    Update-State
+    if ($r -and $r.ok -and $c.Then) { & $c.Then }
+}
+
 function Invoke-Clean {
     param([scriptblock]$Then = $null)
     if (-not (Test-ToolDir)) { return }
-    $done = { param($r) Update-State; if ($r -and $r.ok -and $Then) { & $Then } }.GetNewClosure()
     Start-Work 'Cleaning the tool folder' $script:WorkClean @{
         ToolDir = (Get-ToolDir); BaselineFile = $script:BaselineFile
         ProtectedRegex = $script:ProtectedRegex; DeleteTokens = [bool]$ctl.ChkTokens.IsChecked
-    } $done
+    } $script:DoneStep @{ Then = $Then }
 }
 
 function Invoke-Load {
@@ -1806,28 +1834,28 @@ function Invoke-Load {
     $src = $ctl.TxtPkg.Text.Trim().Trim('"')
     if (-not $src)                          { Add-Activity 'FAIL' "No package selected."; return }
     if (-not (Test-Path -LiteralPath $src)) { Add-Activity 'FAIL' "Not found: $src"; return }
-    $full = -not (Test-Path -LiteralPath (Join-Path $script:StateDir 'unblocked.flag'))
+    $flag = Join-Path $script:StateDir 'unblocked.flag'
+    $full = -not (Test-Path -LiteralPath $flag)
     $done = {
-        param($r)
+        param($r, $c)
         Update-State
         if ($r -and $r.ok) {
-            'done' | Set-Content -LiteralPath (Join-Path $script:StateDir 'unblocked.flag') -Encoding UTF8
-            if ($Then) { & $Then }
+            try { 'done' | Set-Content -LiteralPath $c.Flag -Encoding UTF8 } catch { }
+            if ($c.Then) { & $c.Then }
         }
-    }.GetNewClosure()
+    }
     Start-Work 'Loading the package' $script:WorkLoad @{
         ToolDir = (Get-ToolDir); Source = $src; BaselineFile = $script:BaselineFile
         ProtectedRegex = $script:ProtectedRegex; FullUnblock = $full
-    } $done
+    } $done @{ Then = $Then; Flag = $flag }
 }
 
 function Invoke-Verify {
     param([scriptblock]$Then = $null)
     if (-not (Test-ToolDir)) { return }
-    $done = { param($r) Update-State; if ($r -and $r.ok -and $Then) { & $Then } }.GetNewClosure()
     Start-Work 'Verifying the tool folder' $script:WorkVerify @{
         ToolDir = (Get-ToolDir); BaselineFile = $script:BaselineFile; ProtectedRegex = $script:ProtectedRegex
-    } $done
+    } $script:DoneStep @{ Then = $Then }
 }
 
 function Invoke-Launch {

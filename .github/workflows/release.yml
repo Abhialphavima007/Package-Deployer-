@@ -69,8 +69,10 @@ jobs:
           VERSION="${{ steps.ver.outputs.value }}"
           STAGE="dist/PackageDeployerStudio"
           mkdir -p "$STAGE"
-          cp PackageDeployerStudio.ps1 PackageDeployerStudio.bat README.md LICENSE "$STAGE/"
-          cp HOW-TO-DEPLOY-A-PACKAGE.md "$STAGE/" 2>/dev/null || true
+          cp PackageDeployerStudio.ps1 PackageDeployerStudio.bat \
+             Install.ps1 Install.cmd README.md LICENSE "$STAGE/"
+          cp PackageDeployerStudio.ico    "$STAGE/" 2>/dev/null || true
+          cp HOW-TO-DEPLOY-A-PACKAGE.md   "$STAGE/" 2>/dev/null || true
           cd dist
           zip -r "PackageDeployerStudio-${VERSION}.zip" PackageDeployerStudio
           ls -la
@@ -85,14 +87,27 @@ jobs:
           body: |
             ## Install
 
-            1. Download the zip below and extract it anywhere short, e.g. `C:\PD`.
-            2. Copy Microsoft's `PackageDeployertool` folder in beside `PackageDeployerStudio.ps1`.
-               It is not redistributed here — get it from the
-               [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF).
-            3. Right-click the zip before extracting and tick **Unblock**, or run:
-               `Get-ChildItem -Recurse -File | Unblock-File`
-            4. Double-click `PackageDeployerStudio.bat`.
+            1. Download the zip below.
+            2. **Right-click it, Properties, tick Unblock**, then extract.
+               Windows blocks anything that came from a download.
+            3. Double-click **`Install.cmd`**.
 
-            Requires Windows with PowerShell 5.1. The Solutions and Create Package
-            features also need the [PAC CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
-            and the .NET SDK on `PATH`.
+            It installs per user to `%LOCALAPPDATA%\Programs\PackageDeployerStudio`
+            (no admin rights), adds Start Menu and desktop shortcuts, and registers
+            an entry in **Apps and features** so you can remove it normally.
+
+            Then copy Microsoft's `PackageDeployertool` folder into the install
+            folder — it is not redistributed here. Get it from the
+            [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
+            and extract its `tools\` folder. If you put it next to `Install.cmd`
+            before installing, the installer copies it for you.
+
+            ### Requirements
+
+            - Windows with PowerShell 5.1 (built in)
+            - [PAC CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+              and the .NET SDK on `PATH`, for the Solutions and Create Package pages
+
+            ### Uninstall
+
+            Apps and features, or run `Install.ps1 -Uninstall`.

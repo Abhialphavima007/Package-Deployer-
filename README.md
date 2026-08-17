@@ -10,20 +10,29 @@ No install, no build step. A single PowerShell script and a `.bat` launcher.
 
 ## Install
 
-1. Download the latest zip from [Releases](../../releases) and extract it
-   somewhere with a short path, e.g. `C:\PD`.
-2. Put Microsoft's `PackageDeployertool` folder beside `PackageDeployerStudio.ps1`.
-   It is **not** shipped here — get it from the
-   [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
-   and extract `tools\` from it.
-3. Unblock the files — Windows blocks anything that arrived from a download, and
-   .NET then refuses to load the package assembly:
-   ```powershell
-   Get-ChildItem "C:\PD" -Recurse -File | Unblock-File
-   ```
-4. Double-click **`PackageDeployerStudio.bat`**.
+1. Download the latest zip from [Releases](../../releases).
+2. **Right-click the zip, Properties, tick Unblock**, then extract it.
+   Windows blocks anything that arrived from a download, and .NET will
+   otherwise refuse to load the package assembly with a misleading error.
+3. Double-click **`Install.cmd`**. It asks whether to unblock the files — say **Yes**.
 
-Your folder should look like:
+The installer needs no admin rights. It copies the app to
+`%LOCALAPPDATA%\Programs\PackageDeployerStudio`, unblocks it, creates Start Menu
+and desktop shortcuts, and registers an entry in **Apps and features**.
+
+Then add Microsoft's `PackageDeployertool` folder to the install folder — it is
+**not** redistributed here. Get it from the
+[Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
+and extract its `tools\` folder. If you drop it next to `Install.cmd` *before*
+installing, the installer copies it across for you.
+
+**Uninstall** — Apps and features, or `Install.ps1 -Uninstall`. Your
+`PackageDeployertool` folder is left alone.
+
+### Running without installing
+
+Extract the zip anywhere with a short path and double-click
+`PackageDeployerStudio.bat`. The folder should look like:
 
 ```
 C:\PD\
@@ -187,8 +196,8 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 1. Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`.
 2. Tag and push:
    ```bash
-   git tag v1.2.0
-   git push origin v1.2.0
+   git tag v1.2.2
+   git push origin v1.2.2
    ```
 
 GitHub Actions parses the script and the XAML, builds the zip, and attaches it to
