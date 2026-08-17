@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.2.2'
+$script:AppVersion = '1.2.3'
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.IO.Compression.FileSystem
 
@@ -1043,13 +1043,27 @@ function RunCli {
     return $code
 }
 
+function IsBlocked {
+    # Must go through the -Stream parameter. Concatenating "path:Zone.Identifier"
+    # into a single string is rejected by .NET and by the FileSystem provider
+    # with "The given path's format is not supported."
+    param([string]$Path)
+    try { return [bool](Get-Item -LiteralPath $Path -Stream 'Zone.Identifier' -ErrorAction SilentlyContinue) }
+    catch { return $false }
+}
+
 function FastUnblock {
     param([string[]]$Paths)
-    # Deleting the Zone.Identifier stream directly is far faster than
-    # Unblock-File once you are past a few dozen files.
+    # Test first so the count is honest and Unblock-File only runs where it is
+    # actually needed - most files in a locally built package are never blocked.
     $n = 0
     foreach ($p in $Paths) {
-        try { [IO.File]::Delete($p + ':Zone.Identifier'); $n++ } catch { }
+        try {
+            if (IsBlocked $p) {
+                Unblock-File -LiteralPath $p -ErrorAction SilentlyContinue
+                if (-not (IsBlocked $p)) { $n++ }
+            }
+        } catch { }
     }
     return $n
 }
@@ -1595,9 +1609,13 @@ $script:WorkVerify = {
     $check = @($art.Files | ForEach-Object { $_.FullName })
     foreach ($a in $assets) { $check += @(Get-ChildItem -LiteralPath $a.FullName -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }) }
     $blocked = 0
-    foreach ($p in $check) { if (Test-Path -LiteralPath ($p + ':Zone.Identifier')) { $blocked++ } }
-    if ($blocked -gt 0) { WErr "$blocked file(s) still blocked by Windows - run Load again"; $ok = $false }
-    else { WOk "no blocked files" }
+    $blockedNames = @()
+    foreach ($p in $check) { if (IsBlocked $p) { $blocked++; $blockedNames += (Split-Path -Leaf $p) } }
+    if ($blocked -gt 0) {
+        WErr "$blocked file(s) still blocked by Windows - run Load again"
+        foreach ($b in ($blockedNames | Select-Object -First 10)) { WOut "  blocked: $b" }
+        $ok = $false
+    } else { WOk "no blocked files" }
 
     if ($ok) { WOk "VERIFY PASSED." } else { WErr "VERIFY FAILED." }
     return @{ ok = $ok }

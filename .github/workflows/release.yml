@@ -1,113 +1,164 @@
-name: Release
+name: Build and release
 
-# Push a version tag and this builds the download for you:
-#   git tag v1.1.0
-#   git push origin v1.1.0
+# Three ways to get a release:
+#
+#   1. Bump $script:AppVersion in PackageDeployerStudio.ps1 and push to main.
+#      This workflow tags it and publishes the release for you.
+#   2. Push a tag yourself:  git tag v1.2.3 && git push origin v1.2.3
+#   3. Run it by hand from the Actions tab.
+#
+# Every push also uploads the zip as a build artifact, so there is always
+# something downloadable even without a version bump.
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build (e.g. v1.1.0)'
-        required: true
-        default: 'v0.0.0-test'
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Work out the version
         id: ver
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "value=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
           else
-            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            RAW=$(grep -oP "AppVersion\s*=\s*'\K[^']+" PackageDeployerStudio.ps1)
+            VERSION="v${RAW}"
           fi
+          echo "value=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
 
-      - name: Check the script version matches the tag
-        run: |
-          TAG="${{ steps.ver.outputs.value }}"
-          SCRIPT_VER=$(grep -oP "AppVersion\s*=\s*'\K[^']+" PackageDeployerStudio.ps1)
-          echo "tag=$TAG  script=$SCRIPT_VER"
-          if [ "$TAG" != "v$SCRIPT_VER" ]; then
-            echo "::warning::Tag $TAG does not match \$script:AppVersion ($SCRIPT_VER) in PackageDeployerStudio.ps1"
-          fi
-
-      - name: Lint the PowerShell
+      - name: Check the PowerShell parses
         shell: pwsh
         run: |
           $errors = $null
           [System.Management.Automation.Language.Parser]::ParseFile(
             (Resolve-Path ./PackageDeployerStudio.ps1), [ref]$null, [ref]$errors) | Out-Null
           if ($errors -and $errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Host "::error file=PackageDeployerStudio.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)" }
+            $errors | ForEach-Object {
+              Write-Host "::error file=PackageDeployerStudio.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)"
+            }
             exit 1
           }
           Write-Host "PowerShell parses cleanly."
 
+      - name: Check the installer parses
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path ./Install.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object {
+              Write-Host "::error file=Install.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)"
+            }
+            exit 1
+          }
+          Write-Host "Install.ps1 parses cleanly."
+
       - name: Check the XAML parses
         shell: pwsh
         run: |
-          $src  = Get-Content ./PackageDeployerStudio.ps1 -Raw
-          $m    = [regex]::Match($src, "(?s)\`$xaml = @'\r?\n(.*?)\r?\n'@")
+          $src = Get-Content ./PackageDeployerStudio.ps1 -Raw
+          $m   = [regex]::Match($src, "(?s)\`$xaml = @'\r?\n(.*?)\r?\n'@")
           if (-not $m.Success) { throw "Could not find the XAML block." }
           [xml]$doc = $m.Groups[1].Value
           Write-Host "XAML parses cleanly ($($doc.DocumentElement.Name))."
 
-      - name: Build the release zip
+          # Every DynamicResource key must exist in both palettes.
+          $light = [regex]::Match($src, "(?s)Light = @\{(.*?)\n    \}").Groups[1].Value
+          $dark  = [regex]::Match($src, "(?s)Dark = @\{(.*?)\n    \}").Groups[1].Value
+          $lk = [regex]::Matches($light, "(\w+)='#") | ForEach-Object { $_.Groups[1].Value }
+          $dk = [regex]::Matches($dark,  "(\w+)='#") | ForEach-Object { $_.Groups[1].Value }
+          if (Compare-Object $lk $dk) { throw "Light and Dark palettes do not have the same keys." }
+          $used = [regex]::Matches($m.Groups[1].Value, '\{DynamicResource (\w+)\}') |
+                  ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+          $missing = $used | Where-Object { $_ -notin $lk }
+          if ($missing) { throw "DynamicResource keys missing from the palette: $($missing -join ', ')" }
+          Write-Host "$($lk.Count) palette keys, $($used.Count) referenced, all resolve."
+
+      - name: Build the zip
+        id: build
         run: |
           VERSION="${{ steps.ver.outputs.value }}"
           STAGE="dist/PackageDeployerStudio"
           mkdir -p "$STAGE"
           cp PackageDeployerStudio.ps1 PackageDeployerStudio.bat \
              Install.ps1 Install.cmd README.md LICENSE "$STAGE/"
-          cp PackageDeployerStudio.ico    "$STAGE/" 2>/dev/null || true
-          cp HOW-TO-DEPLOY-A-PACKAGE.md   "$STAGE/" 2>/dev/null || true
+          cp PackageDeployerStudio.ico  "$STAGE/" 2>/dev/null || true
+          cp HOW-TO-DEPLOY-A-PACKAGE.md "$STAGE/" 2>/dev/null || true
           cd dist
           zip -r "PackageDeployerStudio-${VERSION}.zip" PackageDeployerStudio
-          ls -la
+          cd ..
+          echo "zip=dist/PackageDeployerStudio-${VERSION}.zip" >> "$GITHUB_OUTPUT"
+          ls -la dist
+
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PackageDeployerStudio-${{ steps.ver.outputs.value }}
+          path: dist/*.zip
+          if-no-files-found: error
 
       - name: Publish the release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Package Deployer Studio ${{ steps.ver.outputs.value }}
-          tag_name: ${{ steps.ver.outputs.value }}
-          files: dist/*.zip
-          generate_release_notes: true
-          body: |
-            ## Install
+        # Not on pull requests, and not on a version that already has one.
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.value }}
+          ZIP: ${{ steps.build.outputs.zip }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists - replacing its asset."
+            gh release upload "$VERSION" "$ZIP" --clobber
+            exit 0
+          fi
 
-            1. Download the zip below.
-            2. **Right-click it, Properties, tick Unblock**, then extract.
-               Windows blocks anything that came from a download.
-            3. Double-click **`Install.cmd`**.
+          cat > notes.md <<'EOF'
+          ## Install
 
-            It installs per user to `%LOCALAPPDATA%\Programs\PackageDeployerStudio`
-            (no admin rights), adds Start Menu and desktop shortcuts, and registers
-            an entry in **Apps and features** so you can remove it normally.
+          1. Download the zip below.
+          2. **Right-click it, Properties, tick Unblock**, then extract.
+          3. Double-click **`Install.cmd`** and answer **Yes** when it offers to
+             unblock the files.
 
-            Then copy Microsoft's `PackageDeployertool` folder into the install
-            folder — it is not redistributed here. Get it from the
-            [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
-            and extract its `tools\` folder. If you put it next to `Install.cmd`
-            before installing, the installer copies it for you.
+          Installs per user to `%LOCALAPPDATA%\Programs\PackageDeployerStudio`
+          (no admin rights), adds Start Menu and desktop shortcuts, and registers
+          an entry in **Apps and features**.
 
-            ### Requirements
+          Microsoft's `PackageDeployertool` folder is not redistributed here. Get
+          it from the [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
+          and extract its `tools\` folder. Drop it next to `Install.cmd` before
+          installing and the installer copies it for you.
 
-            - Windows with PowerShell 5.1 (built in)
-            - [PAC CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
-              and the .NET SDK on `PATH`, for the Solutions and Create Package pages
+          ### Requirements
 
-            ### Uninstall
+          - Windows with PowerShell 5.1 (built in)
+          - [PAC CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+            and the .NET SDK on `PATH`, for the Solutions and Create Package pages
 
-            Apps and features, or run `Install.ps1 -Uninstall`.
+          ### Uninstall
+
+          Apps and features, or `Install.ps1 -Uninstall`.
+          EOF
+
+          echo "Creating release $VERSION"
+          gh release create "$VERSION" "$ZIP" \
+            --title "Package Deployer Studio $VERSION" \
+            --notes-file notes.md \
+            --target "$GITHUB_SHA"

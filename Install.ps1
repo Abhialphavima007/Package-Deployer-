@@ -60,16 +60,24 @@ function Unblock-Tree {
       Windows tags every file that came out of a downloaded zip with a
       Zone.Identifier alternate data stream. .NET then refuses to load the
       package assembly and Package Deployer reports the useless
-      "No Import packages found". Deleting the stream directly is far faster
-      than Unblock-File once you are past a few dozen files.
+      "No Import packages found".
+
+      Note the -Stream parameter: building a "path:Zone.Identifier" string and
+      passing it as a normal path fails with "The given path's format is not
+      supported", and because that throws it is easy to swallow and believe
+      files were unblocked when nothing happened.
     #>
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { return 0 }
     $n = 0
     foreach ($f in @(Get-ChildItem -LiteralPath $Path -Recurse -File -Force -ErrorAction SilentlyContinue)) {
-        try { [IO.File]::Delete($f.FullName + ':Zone.Identifier'); $n++ } catch { }
+        try {
+            if (Get-Item -LiteralPath $f.FullName -Stream 'Zone.Identifier' -ErrorAction SilentlyContinue) {
+                Unblock-File -LiteralPath $f.FullName -ErrorAction SilentlyContinue
+                $n++
+            }
+        } catch { }
     }
-    try { [IO.File]::Delete($Path + ':Zone.Identifier') } catch { }
     return $n
 }
 

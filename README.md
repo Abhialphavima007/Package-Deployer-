@@ -169,8 +169,8 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
   message queue on a 120 ms timer.
 - **Load** unblocks only the files it just copied. The full 550-file tool folder
   is unblocked once, on first run, and never again.
-- Unblocking deletes the `Zone.Identifier` stream directly rather than calling
-  `Unblock-File` per file.
+- Unblocking tests for the `Zone.Identifier` stream first and only calls
+  `Unblock-File` where one exists, so the reported count is real.
 - The tool-folder baseline is cached in memory and invalidated by file timestamp.
 - The activity list is capped and scrolls once per batch instead of once per line.
 
@@ -193,15 +193,33 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 
 ## Releasing a new version
 
-1. Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`.
-2. Tag and push:
-   ```bash
-   git tag v1.2.2
-   git push origin v1.2.2
-   ```
+Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`, then push to `main`:
 
-GitHub Actions parses the script and the XAML, builds the zip, and attaches it to
-a new Release. Anyone can then download and run it.
+```bash
+git add -A && git commit -m "v1.2.3" && git push
+```
+
+That is the whole process. The workflow reads the version out of the script,
+and if no release with that tag exists yet it creates the tag and publishes the
+release with the zip attached. Pushing again without bumping the version just
+refreshes the existing asset.
+
+You can also tag by hand (`git tag v1.2.3 && git push origin v1.2.3`) or run the
+workflow from the **Actions** tab.
+
+Every push additionally uploads the zip as a build artifact, so there is always
+something downloadable from the Actions run even without a version bump.
+
+### If no release appears
+
+- **Check the Actions tab first.** A red run means the parse checks failed;
+  the error names the file and line.
+- **Settings → Actions → General → Workflow permissions** must be
+  *Read and write permissions*. Without it `gh release create` gets a 403.
+- The workflow only runs on `main` or `master`. On another branch name, add it
+  to the `branches:` list in `.github/workflows/release.yml`.
+- Make sure `.github/workflows/release.yml` was actually committed — it sits in
+  a dot-folder and is easy to miss.
 
 ---
 
