@@ -1,0 +1,98 @@
+name: Release
+
+# Push a version tag and this builds the download for you:
+#   git tag v1.1.0
+#   git push origin v1.1.0
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g. v1.1.0)'
+        required: true
+        default: 'v0.0.0-test'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check the script version matches the tag
+        run: |
+          TAG="${{ steps.ver.outputs.value }}"
+          SCRIPT_VER=$(grep -oP "AppVersion\s*=\s*'\K[^']+" PackageDeployerStudio.ps1)
+          echo "tag=$TAG  script=$SCRIPT_VER"
+          if [ "$TAG" != "v$SCRIPT_VER" ]; then
+            echo "::warning::Tag $TAG does not match \$script:AppVersion ($SCRIPT_VER) in PackageDeployerStudio.ps1"
+          fi
+
+      - name: Lint the PowerShell
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path ./PackageDeployerStudio.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host "::error file=PackageDeployerStudio.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)" }
+            exit 1
+          }
+          Write-Host "PowerShell parses cleanly."
+
+      - name: Check the XAML parses
+        shell: pwsh
+        run: |
+          $src  = Get-Content ./PackageDeployerStudio.ps1 -Raw
+          $m    = [regex]::Match($src, "(?s)\`$xaml = @'\r?\n(.*?)\r?\n'@")
+          if (-not $m.Success) { throw "Could not find the XAML block." }
+          [xml]$doc = $m.Groups[1].Value
+          Write-Host "XAML parses cleanly ($($doc.DocumentElement.Name))."
+
+      - name: Build the release zip
+        run: |
+          VERSION="${{ steps.ver.outputs.value }}"
+          STAGE="dist/PackageDeployerStudio"
+          mkdir -p "$STAGE"
+          cp PackageDeployerStudio.ps1 PackageDeployerStudio.bat README.md LICENSE "$STAGE/"
+          cp HOW-TO-DEPLOY-A-PACKAGE.md "$STAGE/" 2>/dev/null || true
+          cd dist
+          zip -r "PackageDeployerStudio-${VERSION}.zip" PackageDeployerStudio
+          ls -la
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Package Deployer Studio ${{ steps.ver.outputs.value }}
+          tag_name: ${{ steps.ver.outputs.value }}
+          files: dist/*.zip
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            1. Download the zip below and extract it anywhere short, e.g. `C:\PD`.
+            2. Copy Microsoft's `PackageDeployertool` folder in beside `PackageDeployerStudio.ps1`.
+               It is not redistributed here — get it from the
+               [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF).
+            3. Right-click the zip before extracting and tick **Unblock**, or run:
+               `Get-ChildItem -Recurse -File | Unblock-File`
+            4. Double-click `PackageDeployerStudio.bat`.
+
+            Requires Windows with PowerShell 5.1. The Solutions and Create Package
+            features also need the [PAC CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+            and the .NET SDK on `PATH`.

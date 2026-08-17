@@ -1,0 +1,28 @@
+# Microsoft's Package Deployer tool - 27 MB of Microsoft-licensed binaries.
+# Do not redistribute it in this repo. Each user supplies their own copy.
+PackageDeployertool/
+
+# App state and output
+.pdstudio/
+logs/
+exported-solutions/
+dist/
+
+# Package projects created by the Create Package page
+DeploymentPackage/
+*.pdpkg/
+*.pdpkg.zip
+
+# Build output
+bin/
+obj/
+
+# Solution zips
+*.zip
+
+# Windows / editor noise
+Thumbs.db
+desktop.ini
+.vs/
+.vscode/
+*.user
