@@ -20,11 +20,24 @@ The installer needs no admin rights. It copies the app to
 `%LOCALAPPDATA%\Programs\PackageDeployerStudio`, unblocks it, creates Start Menu
 and desktop shortcuts, and registers an entry in **Apps and features**.
 
-Then add Microsoft's `PackageDeployertool` folder to the install folder — it is
-**not** redistributed here. Get it from the
+### The Package Deployer tool
+
+Microsoft's `PackageDeployertool` is **not** redistributed here. The installer
+sorts it out for you:
+
+1. If it sits next to `Install.cmd`, it is copied into the install folder.
+2. Otherwise it searches your NuGet package cache — if you have ever restored
+   `Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF`, it is already on disk.
+3. Failing that, it offers to let you browse for `PackageDeployer.exe`.
+
+Whatever it finds is written into the app's settings, so the Deploy page is
+configured on first launch. The app repeats the same search at startup if the
+configured folder ever goes missing.
+
+Don't have it? Get it from the
 [Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
-and extract its `tools\` folder. If you drop it next to `Install.cmd` *before*
-installing, the installer copies it across for you.
+and extract its `tools\` folder. You only need it for the **Clean / Load /
+Verify / Launch** steps — deploying with the PAC CLI does not use it at all.
 
 **Uninstall** — Apps and features, or `Install.ps1 -Uninstall`. Your
 `PackageDeployertool` folder is left alone.
@@ -196,7 +209,7 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`, then push to `main`:
 
 ```bash
-git add -A && git commit -m "v1.2.3" && git push
+git add -A && git commit -m "v1.3.0" && git push
 ```
 
 That is the whole process. The workflow reads the version out of the script,
@@ -204,7 +217,7 @@ and if no release with that tag exists yet it creates the tag and publishes the
 release with the zip attached. Pushing again without bumping the version just
 refreshes the existing asset.
 
-You can also tag by hand (`git tag v1.2.3 && git push origin v1.2.3`) or run the
+You can also tag by hand (`git tag v1.3.0 && git push origin v1.3.0`) or run the
 workflow from the **Actions** tab.
 
 Every push additionally uploads the zip as a build artifact, so there is always

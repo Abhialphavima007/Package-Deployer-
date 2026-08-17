@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.2.3'
+$script:AppVersion = '1.3.0'
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.IO.Compression.FileSystem
 
@@ -144,7 +144,8 @@ $xaml = @'
     <Style x:Key="Label" TargetType="TextBlock">
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="Foreground" Value="{DynamicResource InkSoft}"/>
-      <Setter Property="Margin" Value="0,0,0,4"/>
+      <Setter Property="Margin" Value="0,0,0,6"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
     </Style>
 
     <Style TargetType="TextBox">
@@ -153,8 +154,10 @@ $xaml = @'
       <Setter Property="CaretBrush" Value="{DynamicResource Ink}"/>
       <Setter Property="BorderBrush" Value="{DynamicResource BtnBorder}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="Padding" Value="9,6"/>
       <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="Margin" Value="0,0,0,2"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="TextBox">
@@ -193,6 +196,7 @@ $xaml = @'
       <Setter Property="Padding" Value="14,7"/>
       <Setter Property="Margin" Value="0,0,8,8"/>
       <Setter Property="MinWidth" Value="96"/>
+      <Setter Property="MinHeight" Value="34"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
@@ -231,12 +235,14 @@ $xaml = @'
     </Style>
     <Style x:Key="BtnTiny" TargetType="Button" BasedOn="{StaticResource BtnBase}">
       <Setter Property="Padding" Value="9,4"/><Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
       <Setter Property="FontSize" Value="11"/><Setter Property="Margin" Value="0,0,6,0"/>
     </Style>
     <Style x:Key="BtnIcon" TargetType="Button" BasedOn="{StaticResource BtnBase}">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="BorderBrush" Value="Transparent"/>
       <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
       <Setter Property="Padding" Value="7"/>
       <Setter Property="Margin" Value="0"/>
     </Style>
@@ -493,7 +499,7 @@ $xaml = @'
                     <TextBlock Text="Output folder" Style="{StaticResource Label}"/>
                     <TextBox x:Name="TxtOutDir"/>
                   </StackPanel>
-                  <Button Grid.Column="2" x:Name="BtnOutBrowse" Content="Browse" VerticalAlignment="Bottom" Margin="0,0,0,0"/>
+                  <Button Grid.Column="2" x:Name="BtnOutBrowse" Content="Browse..." VerticalAlignment="Bottom" Margin="0,0,0,2"/>
                 </Grid>
               </StackPanel>
             </Border>
@@ -540,11 +546,14 @@ $xaml = @'
                 <TextBlock Text="Deploy with the PAC CLI" Style="{StaticResource H2}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10"
                            Text="Deploys to the environment shown in the sidebar, after confirming the target."/>
+                <TextBlock Text="Package to deploy" Style="{StaticResource Label}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
+                           Text="Already have a package? Use Zip for the .pdpkg.zip your build produced. Use Folder for the publish folder that holds &lt;Name&gt;.dll next to PkgAssets\. Either works - the app checks what you picked and says so in the activity log."/>
                 <Grid Margin="0,0,0,12">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                   <TextBox Grid.Column="0" x:Name="TxtDeployPkg" Margin="0,0,8,0"/>
-                  <Button  Grid.Column="1" x:Name="BtnDeployZip"    Content="Zip..."    Margin="0,0,8,0"/>
-                  <Button  Grid.Column="2" x:Name="BtnDeployFolder" Content="Folder..." Margin="0"/>
+                  <Button  Grid.Column="1" x:Name="BtnDeployZip"    Content="Zip..." ToolTip="Pick the .pdpkg.zip your build produced"    Margin="0,0,8,0"/>
+                  <Button  Grid.Column="2" x:Name="BtnDeployFolder" Content="Folder..." ToolTip="Pick the publish folder that contains the package assembly and its assets folder" Margin="0"/>
                 </Grid>
                 <WrapPanel>
                   <Button x:Name="BtnCliDeploy"  Content="Deploy package" Style="{StaticResource BtnGo}" MinWidth="150"/>
@@ -557,20 +566,24 @@ $xaml = @'
               <StackPanel>
                 <TextBlock Text="Or drive the Package Deployer GUI tool" Style="{StaticResource H2}"/>
                 <TextBlock Text="Tool folder" Style="{StaticResource Label}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
+                           Text="Microsoft's Package Deployer tool - the folder containing PackageDeployer.exe. Found automatically when possible; the PAC CLI deploy above does not need it."/>
                 <Grid Margin="0,0,0,12">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                   <TextBox Grid.Column="0" x:Name="TxtTool" Margin="0,0,8,0"/>
-                  <Button  Grid.Column="1" x:Name="BtnToolBrowse" Content="Browse" Margin="0,0,8,0"/>
+                  <Button  Grid.Column="1" x:Name="BtnToolBrowse" Content="Browse..." Margin="0,0,8,0"/>
                   <Button  Grid.Column="2" x:Name="BtnBaseline"   Content="Snapshot" Margin="0"
                            ToolTip="Record the current tool folder as clean. Do this once, with no package loaded."/>
                 </Grid>
 
-                <TextBlock Text="Package (.pdpkg folder or .pdpkg.zip)" Style="{StaticResource Label}"/>
+                <TextBlock Text="Package to load into the tool" Style="{StaticResource Label}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
+                           Text="Same choice as above: the .pdpkg.zip, or the publish folder containing the package assembly and its assets folder."/>
                 <Grid Margin="0,0,0,14">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                   <TextBox Grid.Column="0" x:Name="TxtPkg" Margin="0,0,8,0"/>
-                  <Button  Grid.Column="1" x:Name="BtnPkgFolder" Content="Folder..." Margin="0,0,8,0"/>
-                  <Button  Grid.Column="2" x:Name="BtnPkgZip"    Content="Zip..."    Margin="0"/>
+                  <Button  Grid.Column="1" x:Name="BtnPkgFolder" Content="Folder..." ToolTip="Pick the publish folder that contains the package assembly and its assets folder" Margin="0,0,8,0"/>
+                  <Button  Grid.Column="2" x:Name="BtnPkgZip"    Content="Zip..." ToolTip="Pick the .pdpkg.zip your build produced"    Margin="0"/>
                 </Grid>
 
                 <Border Background="{DynamicResource Surface2}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
@@ -1236,12 +1249,34 @@ $script:Timer.Add_Tick({
 # Dialogs & small helpers
 # ---------------------------------------------------------------------------
 function Select-FolderDialog {
+    <#
+      The real Explorer folder picker, not the old tree-view
+      FolderBrowserDialog: OpenFileDialog with name validation switched off
+      shows the modern common-item dialog - address bar, places, search - and
+      we take the directory of whatever it returns.
+    #>
     param([string]$Description, [string]$Start)
-    $d = New-Object System.Windows.Forms.FolderBrowserDialog
-    $d.Description = $Description; $d.ShowNewFolderButton = $true
-    if ($Start -and (Test-Path $Start)) { $d.SelectedPath = $Start }
-    if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { return $d.SelectedPath }
-    return $null
+    $d = New-Object System.Windows.Forms.OpenFileDialog
+    $d.Title            = "$Description  -  open the folder, then click Select"
+    $d.ValidateNames    = $false
+    $d.CheckFileExists  = $false
+    $d.CheckPathExists  = $true
+    $d.Multiselect      = $false
+    $d.Filter           = 'Folders|*.this-never-matches'
+    $d.FileName         = 'Select this folder'
+    if ($Start -and (Test-Path -LiteralPath $Start)) {
+        $d.InitialDirectory = $Start
+    } elseif ($Start) {
+        $p = Split-Path -Parent $Start
+        if ($p -and (Test-Path -LiteralPath $p)) { $d.InitialDirectory = $p }
+    }
+    if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return $null }
+
+    $picked = Split-Path -Parent $d.FileName
+    if (-not $picked) { return $null }
+    # If they selected a real folder rather than opening it, use that instead.
+    if (Test-Path -LiteralPath $d.FileName -PathType Container) { $picked = $d.FileName }
+    return $picked
 }
 function Select-FileDialog {
     param([string]$Title, [string]$Filter, [switch]$Multi, [string]$Start)
@@ -1252,6 +1287,68 @@ function Select-FileDialog {
     return @()
 }
 function Get-ToolDir { $ctl.TxtTool.Text.Trim().TrimEnd('\') }
+
+function Test-IsToolFolder {
+    param([string]$Path)
+    if (-not $Path) { return $false }
+    try { return (Test-Path -LiteralPath (Join-Path $Path 'PackageDeployer.exe')) } catch { return $false }
+}
+
+function Find-ToolFolder {
+    <#
+      Locate Microsoft's Package Deployer tool without making the user hunt for
+      it. Checks where the installer would have put it, then next to the app,
+      then any folder beside the app, then the NuGet cache - people who have
+      ever restored the PackageDeployment.WPF package already have a copy.
+    #>
+    $cands = New-Object System.Collections.Generic.List[string]
+
+    $cands.Add((Join-Path $script:AppDir 'PackageDeployertool'))
+    $cands.Add((Join-Path $script:AppDir 'PackageDeployerTool'))
+    $parent = Split-Path -Parent $script:AppDir
+    if ($parent) { $cands.Add((Join-Path $parent 'PackageDeployertool')) }
+    $cands.Add((Join-Path $env:LOCALAPPDATA 'Programs\PackageDeployerStudio\PackageDeployertool'))
+
+    # any immediate subfolder of the app folder that holds the exe
+    foreach ($d in @(Get-ChildItem -LiteralPath $script:AppDir -Directory -ErrorAction SilentlyContinue)) {
+        $cands.Add($d.FullName)
+    }
+
+    # NuGet package cache
+    foreach ($pkg in @('microsoft.crmsdk.xrmtooling.packagedeployment.wpf','microsoft.crmsdk.xrmtooling.packagedeployment')) {
+        $root = Join-Path $env:USERPROFILE ".nuget\packages\$pkg"
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+        foreach ($v in @(Get-ChildItem -LiteralPath $root -Directory -ErrorAction SilentlyContinue |
+                         Sort-Object Name -Descending)) {
+            $cands.Add((Join-Path $v.FullName 'tools'))
+            $cands.Add((Join-Path $v.FullName 'content\bin\coretools'))
+            $cands.Add($v.FullName)
+        }
+    }
+
+    foreach ($c in $cands) { if (Test-IsToolFolder $c) { return $c } }
+    return $null
+}
+
+function Initialize-ToolFolder {
+    # Called at startup. Keeps a valid saved value, otherwise goes looking.
+    if (Test-IsToolFolder (Get-ToolDir)) {
+        Add-Activity 'OK' "Package Deployer tool: $(Get-ToolDir)"
+        return
+    }
+    $found = Find-ToolFolder
+    if ($found) {
+        $ctl.TxtTool.Text = $found
+        Add-Activity 'OK' "Package Deployer tool found automatically: $found"
+        Save-Settings
+    } else {
+        $ctl.TxtTool.Text = ''
+        Add-Activity 'WARN' "Microsoft's Package Deployer tool was not found on this machine."
+        Add-Activity 'OUT' "The Deploy page's 'Do all 1-4' needs it. The PAC CLI deploy above it does not."
+        Add-Activity 'OUT' "Get it from the Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF NuGet package,"
+        Add-Activity 'OUT' "extract its tools\ folder, then click Browse next to 'Tool folder' on the Deploy page."
+    }
+}
 
 function Test-ToolDir {
     $t = Get-ToolDir
@@ -1318,6 +1415,58 @@ function Update-State {
     $lines += ("Package dll : {0}" -f $(if ($dlls.Count -eq 0) { 'none' } else { ($dlls | ForEach-Object { $_.Name }) -join ', ' }))
     if ($dlls.Count -gt 1) { $lines += "WARNING: more than one package dll present." }
     $ctl.TbState.Text = $lines -join "`r`n"
+}
+
+function Show-PackageSummary {
+    <#
+      Inspect whatever the user just picked and say what it is, so "which one
+      do I choose" is answered by the app rather than by guesswork.
+    #>
+    param([string]$Path, [string]$Where = 'Package')
+    if (-not $Path) { return }
+    if (-not (Test-Path -LiteralPath $Path)) { Add-Activity 'FAIL' "$Where not found: $Path"; return }
+
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            if ([IO.Path]::GetExtension($Path) -ne '.zip') {
+                Add-Activity 'WARN' "$Where is a file but not a .zip - pick the .pdpkg.zip, or the publish folder."
+                return
+            }
+            $zf = [IO.Compression.ZipFile]::OpenRead($Path)
+            try {
+                $names = @($zf.Entries | ForEach-Object { $_.FullName })
+                $cfg   = @($names | Where-Object { $_ -match '(^|/)ImportConfig\.xml$' })
+                $dlls  = @($names | Where-Object { $_ -match '^[^/]+\.dll$' })
+                $sols  = @($names | Where-Object { $_ -match '\.zip$' })
+                if ($cfg.Count -eq 0) {
+                    Add-Activity 'WARN' "No ImportConfig.xml inside this zip - it may not be a Package Deployer package."
+                } else {
+                    Add-Activity 'OK' ("$Where looks right: {0} solution zip(s), assembly {1}" -f
+                        $sols.Count, $(if ($dlls.Count) { $dlls[0] } else { 'not at the root' }))
+                }
+            } finally { $zf.Dispose() }
+            return
+        }
+
+        # a folder
+        $cfg = @(Get-ChildItem -LiteralPath $Path -Recurse -File -Filter 'ImportConfig.xml' -ErrorAction SilentlyContinue |
+                 Select-Object -First 1)
+        if ($cfg.Count -eq 0) {
+            Add-Activity 'WARN' "No ImportConfig.xml under this folder."
+            Add-Activity 'OUT' "Pick the publish folder - the one holding <Name>.dll next to PkgAssets\ - or the .pdpkg.zip."
+            return
+        }
+        $assets = $cfg[0].Directory
+        $root   = $assets.Parent
+        $dll    = @(Get-ChildItem -LiteralPath $root.FullName -Filter *.dll -File -ErrorAction SilentlyContinue |
+                    Where-Object { $_.BaseName -notmatch $script:ProtectedRegex } | Select-Object -First 1)
+        $zips   = @(Get-ChildItem -LiteralPath $assets.FullName -Filter *.zip -ErrorAction SilentlyContinue).Count
+        Add-Activity 'OK' ("$Where looks right: {0}\ with {1} solution zip(s), assembly {2}" -f
+            $assets.Name, $zips, $(if ($dll.Count) { $dll[0].Name } else { 'MISSING' }))
+        if ($dll.Count -eq 0) { Add-Activity 'WARN' "No package assembly beside $($assets.Name) - the tool will not see a package." }
+    } catch {
+        Add-Activity 'WARN' ("could not inspect the $Where`: " + $_.Exception.Message)
+    }
 }
 
 function Update-EnvChip {
@@ -2063,24 +2212,28 @@ $ctl.BtnAll.Add_Click({
     }
 })
 $ctl.BtnToolBrowse.Add_Click({
-    $p = Select-FolderDialog -Description 'Select the PackageDeployertool folder' -Start (Get-ToolDir)
-    if ($p) { $ctl.TxtTool.Text = $p; Update-State; Save-Settings }
+    $p = Select-FolderDialog -Description "Locate the folder containing PackageDeployer.exe" -Start (Get-ToolDir)
+    if (-not $p) { return }
+    $ctl.TxtTool.Text = $p
+    if (Test-IsToolFolder $p) { Add-Activity 'OK' "Tool folder set: $p" }
+    else { Add-Activity 'FAIL' "PackageDeployer.exe is not in that folder. Pick the folder that contains it." }
+    Update-State; Save-Settings
 })
 $ctl.BtnPkgFolder.Add_Click({
-    $p = Select-FolderDialog -Description 'Select the unzipped .pdpkg folder'
-    if ($p) { $ctl.TxtPkg.Text = $p; Save-Settings }
+    $p = Select-FolderDialog -Description 'Select the package publish folder' -Start $ctl.TxtPkg.Text
+    if ($p) { $ctl.TxtPkg.Text = $p; Show-PackageSummary $p 'Package'; Save-Settings }
 })
 $ctl.BtnPkgZip.Add_Click({
-    $f = Select-FileDialog -Title 'Select the package zip' -Filter 'Package (*.zip)|*.zip|All files (*.*)|*.*'
-    if ($f -and $f.Count -gt 0) { $ctl.TxtPkg.Text = $f[0]; Save-Settings }
+    $f = Select-FileDialog -Title 'Select the package zip (.pdpkg.zip)' -Filter 'Package Deployer package (*.zip)|*.zip|All files (*.*)|*.*' -Start $ctl.TxtPkg.Text
+    if ($f -and $f.Count -gt 0) { $ctl.TxtPkg.Text = $f[0]; Show-PackageSummary $f[0] 'Package'; Save-Settings }
 })
 $ctl.BtnDeployZip.Add_Click({
-    $f = Select-FileDialog -Title 'Select the package zip' -Filter 'Package (*.zip)|*.zip|All files (*.*)|*.*'
-    if ($f -and $f.Count -gt 0) { $ctl.TxtDeployPkg.Text = $f[0]; Save-Settings }
+    $f = Select-FileDialog -Title 'Select the package zip (.pdpkg.zip)' -Filter 'Package Deployer package (*.zip)|*.zip|All files (*.*)|*.*' -Start $ctl.TxtDeployPkg.Text
+    if ($f -and $f.Count -gt 0) { $ctl.TxtDeployPkg.Text = $f[0]; Show-PackageSummary $f[0] 'Package'; Save-Settings }
 })
 $ctl.BtnDeployFolder.Add_Click({
-    $p = Select-FolderDialog -Description 'Select the package folder'
-    if ($p) { $ctl.TxtDeployPkg.Text = $p; Save-Settings }
+    $p = Select-FolderDialog -Description 'Select the package publish folder' -Start $ctl.TxtDeployPkg.Text
+    if ($p) { $ctl.TxtDeployPkg.Text = $p; Show-PackageSummary $p 'Package'; Save-Settings }
 })
 $ctl.BtnDeployLogs.Add_Click({ if (Test-Path -LiteralPath $script:LogDir) { Start-Process explorer.exe $script:LogDir } })
 
@@ -2185,7 +2338,8 @@ $ctl.Nav.SelectedIndex = 0
 
 Add-Activity 'OK'  "Package Deployer Studio v$script:AppVersion ready."
 Add-Activity 'OUT' "Working folder: $script:AppDir"
-if (-not (Test-Path -LiteralPath $script:BaselineFile)) {
+Initialize-ToolFolder
+if ((Test-IsToolFolder (Get-ToolDir)) -and -not (Test-Path -LiteralPath $script:BaselineFile)) {
     Add-Activity 'OUT' "Tip: on the Deploy page, click Snapshot once while the tool folder is clean."
 }
 Update-State
