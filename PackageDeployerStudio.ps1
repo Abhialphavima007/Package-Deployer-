@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.3.0'
+$script:AppVersion = '1.3.3'
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.IO.Compression.FileSystem
 
@@ -256,6 +256,25 @@ $xaml = @'
       <Setter Property="Margin" Value="0,0,0,14"/>
     </Style>
 
+    <Style x:Key="NavList" TargetType="ListBox">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+      <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBox">
+            <Border Background="Transparent" BorderThickness="0" Padding="0">
+              <ScrollViewer Focusable="False" Background="Transparent"
+                            HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsPresenter/>
+              </ScrollViewer>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="NavItem" TargetType="ListBoxItem">
       <Setter Property="Padding" Value="0"/>
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -309,6 +328,38 @@ $xaml = @'
       <Setter Property="Background" Value="{DynamicResource Surface}"/>
       <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
       <Setter Property="FontSize" Value="12"/>
+    </Style>
+
+    <!-- Spinner: a full circular track with a rotating arc on top, so it reads
+         as a complete ring instead of a lone arc chasing its tail. -->
+    <Style x:Key="SpinTrack" TargetType="Ellipse">
+      <Setter Property="Stroke" Value="{DynamicResource Line}"/>
+      <Setter Property="StrokeThickness" Value="3"/>
+      <Setter Property="Fill" Value="Transparent"/>
+    </Style>
+    <Style x:Key="SpinArc" TargetType="Path">
+      <Setter Property="Stroke" Value="{DynamicResource Accent}"/>
+      <Setter Property="StrokeThickness" Value="3"/>
+      <Setter Property="StrokeStartLineCap" Value="Round"/>
+      <Setter Property="StrokeEndLineCap" Value="Round"/>
+      <Setter Property="Fill" Value="Transparent"/>
+      <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+      <Setter Property="RenderTransform">
+        <Setter.Value><RotateTransform Angle="0"/></Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="IsVisible" Value="True">
+          <Trigger.EnterActions>
+            <BeginStoryboard Name="SpinSB">
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                 From="0" To="360" Duration="0:0:1" RepeatBehavior="Forever"/>
+              </Storyboard>
+            </BeginStoryboard>
+          </Trigger.EnterActions>
+          <Trigger.ExitActions><StopStoryboard BeginStoryboardName="SpinSB"/></Trigger.ExitActions>
+        </Trigger>
+      </Style.Triggers>
     </Style>
 
     <Style x:Key="NavIconPath" TargetType="Path">
@@ -412,9 +463,8 @@ $xaml = @'
           </Grid>
         </Border>
 
-        <ListBox x:Name="Nav" BorderThickness="0" Background="Transparent"
-                 ItemContainerStyle="{StaticResource NavItem}" Margin="0,4,0,0"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox x:Name="Nav" Style="{StaticResource NavList}"
+                 ItemContainerStyle="{StaticResource NavItem}" Margin="0,4,0,0">
           <ListBoxItem ToolTip="Create Package">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -480,6 +530,10 @@ $xaml = @'
         </DockPanel>
       </Border>
 
+      <ProgressBar x:Name="PbTop" Grid.Row="0" Height="3" VerticalAlignment="Bottom" IsIndeterminate="True" Minimum="0" Maximum="100"
+                   BorderThickness="0" Visibility="Collapsed" Panel.ZIndex="10"
+                   Foreground="{DynamicResource Accent}" Background="Transparent"/>
+
       <!-- pages -->
       <Grid Grid.Row="1">
 
@@ -543,42 +597,42 @@ $xaml = @'
           <StackPanel>
             <Border Style="{StaticResource CardBorder}">
               <StackPanel>
-                <TextBlock Text="Deploy with the PAC CLI" Style="{StaticResource H2}"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10"
-                           Text="Deploys to the environment shown in the sidebar, after confirming the target."/>
-                <TextBlock Text="Package to deploy" Style="{StaticResource Label}"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
-                           Text="Already have a package? Use Zip for the .pdpkg.zip your build produced. Use Folder for the publish folder that holds &lt;Name&gt;.dll next to PkgAssets\. Either works - the app checks what you picked and says so in the activity log."/>
-                <Grid Margin="0,0,0,12">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                  <TextBox Grid.Column="0" x:Name="TxtDeployPkg" Margin="0,0,8,0"/>
-                  <Button  Grid.Column="1" x:Name="BtnDeployZip"    Content="Zip..." ToolTip="Pick the .pdpkg.zip your build produced"    Margin="0,0,8,0"/>
-                  <Button  Grid.Column="2" x:Name="BtnDeployFolder" Content="Folder..." ToolTip="Pick the publish folder that contains the package assembly and its assets folder" Margin="0"/>
-                </Grid>
-                <WrapPanel>
-                  <Button x:Name="BtnCliDeploy"  Content="Deploy package" Style="{StaticResource BtnGo}" MinWidth="150"/>
-                  <Button x:Name="BtnDeployLogs" Content="Open deploy logs"/>
-                </WrapPanel>
-              </StackPanel>
-            </Border>
+                <TextBlock Text="Deploy with the Package Deployer GUI tool" Style="{StaticResource H2}"/>
+                <Border x:Name="BdNoTool" Background="{DynamicResource WarnSoft}" BorderBrush="{DynamicResource Warn}"
+                        BorderThickness="1" CornerRadius="4" Padding="12,10" Margin="0,0,0,12" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Text="Microsoft's Package Deployer tool was not found" FontWeight="SemiBold" FontSize="12"
+                               Foreground="{DynamicResource Warn}" Margin="0,0,0,4"/>
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource Warn}"
+                               Text="Only the four steps below need it. Deploying with the PAC CLI above works without it. Click Browse and pick the folder that contains PackageDeployer.exe."/>
+                  </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource CardBorder}">
-              <StackPanel>
-                <TextBlock Text="Or drive the Package Deployer GUI tool" Style="{StaticResource H2}"/>
                 <TextBlock Text="Tool folder" Style="{StaticResource Label}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
-                           Text="Microsoft's Package Deployer tool - the folder containing PackageDeployer.exe. Found automatically when possible; the PAC CLI deploy above does not need it."/>
+                           Text="The folder containing PackageDeployer.exe. Configured for you at install time when it can be found."/>
                 <Grid Margin="0,0,0,12">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                   <TextBox Grid.Column="0" x:Name="TxtTool" Margin="0,0,8,0"/>
                   <Button  Grid.Column="1" x:Name="BtnToolBrowse" Content="Browse..." Margin="0,0,8,0"/>
                   <Button  Grid.Column="2" x:Name="BtnBaseline"   Content="Snapshot" Margin="0"
-                           ToolTip="Record the current tool folder as clean. Do this once, with no package loaded."/>
+                           ToolTip="Records which files ship with the tool, so Clean knows exactly which files are yours."/>
                 </Grid>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,12"
+                           Text="Snapshot: click once while no package is loaded. It writes down the 550-odd files that come with the tool, so Clean can remove your package precisely instead of guessing from file names. Optional - Clean falls back to name rules without it, but the snapshot is safer."/>
 
                 <TextBlock Text="Package to load into the tool" Style="{StaticResource Label}"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
-                           Text="Same choice as above: the .pdpkg.zip, or the publish folder containing the package assembly and its assets folder."/>
+                <Border Background="{DynamicResource Surface2}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        CornerRadius="4" Padding="11,9" Margin="0,0,0,9">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,5"
+                               Text="Zip or folder, both fine. The folder is the one holding the package .dll next to its PkgAssets folder."/>
+                    <TextBlock Style="{StaticResource Hint}" FontFamily="Consolas" Margin="0,0,0,2"
+                               Text="Zip     C:\Research\TestPackage\DeploymentPackage\bin\Debug\DeploymentPackage.1.0.0.pdpkg.zip"/>
+                    <TextBlock Style="{StaticResource Hint}" FontFamily="Consolas"
+                               Text="Folder  C:\Research\TestPackage\DeploymentPackage\bin\Debug\net472\pdpublish"/>
+                  </StackPanel>
+                </Border>
                 <Grid Margin="0,0,0,14">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                   <TextBox Grid.Column="0" x:Name="TxtPkg" Margin="0,0,8,0"/>
@@ -604,6 +658,38 @@ $xaml = @'
                 <WrapPanel>
                   <CheckBox x:Name="ChkTokens"     Content="Delete cached sign-in when cleaning" IsChecked="True"/>
                   <CheckBox x:Name="ChkAutoLaunch" Content="Launch after 'Do all'"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardBorder}">
+              <StackPanel>
+                <TextBlock Text="Or deploy straight from the command line" Style="{StaticResource H2}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10"
+                           Text="Deploys to the environment shown in the sidebar, after confirming the target."/>
+                <TextBlock Text="Package to deploy" Style="{StaticResource Label}"/>
+                <Border Background="{DynamicResource Surface2}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        CornerRadius="4" Padding="11,9" Margin="0,0,0,9">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,5"
+                               Text="Yes - a .pdpkg.zip is exactly what goes here. pac package deploy takes a package zip or the package .dll."/>
+                    <TextBlock Style="{StaticResource Hint}" FontFamily="Consolas" Margin="0,0,0,2"
+                               Text="Zip     C:\Research\TestPackage\DeploymentPackage\bin\Debug\DeploymentPackage.1.0.0.pdpkg.zip"/>
+                    <TextBlock Style="{StaticResource Hint}" FontFamily="Consolas"
+                               Text="Folder  C:\Research\TestPackage\DeploymentPackage\bin\Debug\net472\pdpublish"/>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,5,0,0"
+                               Text="Pick a folder and the zip or .dll inside it is found for you."/>
+                  </StackPanel>
+                </Border>
+                <Grid Margin="0,0,0,12">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <TextBox Grid.Column="0" x:Name="TxtDeployPkg" Margin="0,0,8,0"/>
+                  <Button  Grid.Column="1" x:Name="BtnDeployZip"    Content="Zip..." ToolTip="Pick the .pdpkg.zip your build produced"    Margin="0,0,8,0"/>
+                  <Button  Grid.Column="2" x:Name="BtnDeployFolder" Content="Folder..." ToolTip="Pick the publish folder that contains the package assembly and its assets folder" Margin="0"/>
+                </Grid>
+                <WrapPanel>
+                  <Button x:Name="BtnCliDeploy"  Content="Deploy package" Style="{StaticResource BtnGo}" MinWidth="150"/>
+                  <Button x:Name="BtnDeployLogs" Content="Open deploy logs"/>
                 </WrapPanel>
               </StackPanel>
             </Border>
@@ -746,15 +832,27 @@ $xaml = @'
         <!-- busy overlay, covers the page area only so the activity log stays readable -->
         <Border x:Name="Overlay" Background="{DynamicResource Scrim}" Visibility="Collapsed">
           <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
-                  CornerRadius="8" Padding="26,20" Width="380" Height="128"
+                  CornerRadius="10" Padding="24,20" Width="420"
                   HorizontalAlignment="Center" VerticalAlignment="Center">
-            <StackPanel VerticalAlignment="Center">
-              <TextBlock x:Name="TbOverlayTitle" Text="Working..." FontSize="14" FontWeight="SemiBold"/>
-              <TextBlock x:Name="TbOverlaySub" Style="{StaticResource Hint}" Margin="0,4,0,12"
-                         Text="Progress appears in the activity log below."/>
-              <ProgressBar x:Name="PbBusy" Height="4" IsIndeterminate="True" BorderThickness="0"
-                           Foreground="{DynamicResource Accent}" Background="{DynamicResource Surface2}"/>
-            </StackPanel>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Grid Grid.Column="0" Width="30" Height="30" VerticalAlignment="Top" Margin="0,2,16,0">
+                <Ellipse Style="{StaticResource SpinTrack}" Width="30" Height="30"/>
+                <Path x:Name="IcSpinner" Style="{StaticResource SpinArc}"
+                      Data="M 15,1.5 A 13.5,13.5 0 0 1 28.5,15"/>
+              </Grid>
+              <StackPanel Grid.Column="1">
+                <DockPanel>
+                  <TextBlock x:Name="TbOverlayPct" DockPanel.Dock="Right" Text="" FontSize="12.5" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Accent}" VerticalAlignment="Top" Margin="8,1,0,0"/>
+                  <TextBlock x:Name="TbOverlayTitle" Text="Working..." FontSize="14.5" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                </DockPanel>
+                <TextBlock x:Name="TbOverlaySub" Style="{StaticResource Hint}" Margin="0,5,0,12"
+                           Text="Progress appears in the activity log below."/>
+                <ProgressBar x:Name="PbBusy" Height="5" IsIndeterminate="True" Minimum="0" Maximum="100" BorderThickness="0"
+                             Foreground="{DynamicResource Accent}" Background="{DynamicResource Surface2}"/>
+              </StackPanel>
+            </Grid>
           </Border>
         </Border>
       </Grid>
@@ -770,6 +868,11 @@ $xaml = @'
               <Path x:Name="IcLogChevron" Style="{StaticResource NavIconPath}" Width="14" Height="14" Data="M4,12 L10,6 L16,12"/>
             </Button>
             <TextBlock Text="Activity" FontWeight="SemiBold" FontSize="12.5" DockPanel.Dock="Left" Margin="6,0,14,0"/>
+            <Grid x:Name="IcMiniSpin" Width="14" Height="14" DockPanel.Dock="Left" Margin="0,0,8,0"
+                  Visibility="Collapsed" VerticalAlignment="Center">
+              <Ellipse Style="{StaticResource SpinTrack}" StrokeThickness="2" Width="14" Height="14"/>
+              <Path Style="{StaticResource SpinArc}" StrokeThickness="2" Data="M 7,1 A 6,6 0 0 1 13,7"/>
+            </Grid>
             <TextBlock x:Name="TbLastStatus" Style="{StaticResource Hint}" DockPanel.Dock="Left"/>
             <WrapPanel HorizontalAlignment="Right">
               <ComboBox x:Name="CmbFilter" Width="132" Margin="0,0,8,0" SelectedIndex="0">
@@ -850,6 +953,7 @@ foreach ($n in @(
     'Nav','NavLbl0','NavLbl1','NavLbl2','NavLbl3',
     'TbPageTitle','TbPageSub','BtnTheme','IcTheme','TbTheme',
     'PageCreate','PageDeploy','PageEnv','PageSol','Overlay','TbOverlayTitle','TbOverlaySub','PbBusy',
+    'IcSpinner','PbTop','IcMiniSpin','BdNoTool','TbOverlayPct',
     'TxtPkgName','TxtOutDir','BtnOutBrowse','LstSolutions','BtnSolAdd','BtnSolUp','BtnSolDown','BtnSolDel',
     'BtnSolClear','BtnBuild','BtnOpenOut','BtnUseInDeploy',
     'TxtDeployPkg','BtnDeployZip','BtnDeployFolder','BtnCliDeploy','BtnDeployLogs',
@@ -873,12 +977,26 @@ $ctl.LvLog.ItemsSource = $script:View
 # ---------------------------------------------------------------------------
 function Set-Theme {
     param([ValidateSet('Light','Dark')][string]$Name)
-    # Swap the whole palette dictionary. MergedDictionaries is a strongly typed
-    # Collection[ResourceDictionary], so nothing can slip through wrapped.
+    # Swap the palette dictionary IN PLACE. Clear() followed by Add() leaves a
+    # moment where the keys do not exist, and any control that re-evaluates in
+    # that window falls back to its Windows default - which is why the sidebar
+    # flipped to white. Assigning by index is atomic, so there is no gap.
     $md = $win.Resources.MergedDictionaries
-    $md.Clear()
-    $md.Add($script:ThemeDicts[$Name])
+    if ($md.Count -eq 0) { $md.Add($script:ThemeDicts[$Name]) }
+    else                 { $md[0] = $script:ThemeDicts[$Name] }
     $script:Theme = $Name
+
+    # Assign the chrome brushes DIRECTLY rather than trusting the dynamic
+    # lookup. The sidebar kept rendering with the light palette even though its
+    # markup asks for {DynamicResource Surface} and everything around it
+    # updated; a direct set on a Brush-typed property is deterministic, and
+    # takes precedence over the dynamic reference. The brushes come straight
+    # out of the theme dictionary, so they are WPF-created and already frozen.
+    $td = $script:ThemeDicts[$Name]
+    $ctl.Sidebar.Background  = $td['Surface']
+    $ctl.Sidebar.BorderBrush = $td['Line']
+    $ctl.Nav.Foreground      = $td['Ink']
+    $win.Background          = $td['WinBg']
     $ctl.TbTheme.Text = if ($Name -eq 'Light') { 'Dark' } else { 'Light' }
     # sun when dark is active, crescent moon when light is active
     $ctl.IcTheme.Data = if ($Name -eq 'Light') {
@@ -993,6 +1111,9 @@ function Test-EnvUrl {
 $script:Prelude = @'
 $ErrorActionPreference = 'Continue'
 function WQ   { param([string]$L,[string]$T) $Q.Enqueue([pscustomobject]@{Level=$L;Text=$T}) }
+# Progress: current step, total steps, what is happening. The UI turns this
+# into a real percentage bar instead of an endless indeterminate sweep.
+function WProg { param([int]$Cur,[int]$Total,[string]$Label) WQ 'PROG' ("{0}|{1}|{2}" -f $Cur,$Total,$Label) }
 function WStep{ param([string]$t) WQ 'STEP' $t }
 function WLog { param([string]$t) WQ 'INFO' $t }
 function WOk  { param([string]$t) WQ 'OK'   $t }
@@ -1139,11 +1260,44 @@ function ResolvePackageRoot {
 $script:Timer = New-Object System.Windows.Threading.DispatcherTimer
 $script:Timer.Interval = [TimeSpan]::FromMilliseconds(120)
 
+function Set-Progress {
+    # "current|total|label" from a worker. Anything unparseable leaves the bar
+    # indeterminate, which is the right answer for a step of unknown length.
+    param([string]$Payload)
+    $bits = $Payload -split '\|', 3
+    if ($bits.Count -lt 2) { return }
+    $cur = 0; $total = 0
+    if (-not [int]::TryParse($bits[0], [ref]$cur))   { return }
+    if (-not [int]::TryParse($bits[1], [ref]$total)) { return }
+    if ($total -le 0) { return }
+
+    $pct = [Math]::Max(0, [Math]::Min(100, [int](100 * $cur / $total)))
+    foreach ($b in @($ctl.PbBusy, $ctl.PbTop)) {
+        $b.IsIndeterminate = $false
+        $b.Value = $pct
+    }
+    $ctl.TbOverlayPct.Text = "$pct%"
+    if ($bits.Count -ge 3 -and $bits[2]) {
+        $ctl.TbOverlaySub.Text = ("Step {0} of {1} - {2}" -f $cur, $total, $bits[2])
+        $script:ProgLabel = $true
+    }
+}
+
 function Set-BusyUi {
     param([bool]$On, [string]$Title = 'Working...')
-    $ctl.Overlay.Visibility  = if ($On) { 'Visible' } else { 'Collapsed' }
-    $ctl.TbOverlayTitle.Text = $Title
-    $ctl.Nav.IsEnabled       = -not $On
+    $vis = if ($On) { 'Visible' } else { 'Collapsed' }
+    $ctl.Overlay.Visibility     = $vis
+    $ctl.PbTop.Visibility       = $vis      # thin bar under the header
+    $ctl.IcMiniSpin.Visibility  = $vis      # spinner beside the activity status
+    $ctl.TbOverlayTitle.Text    = $Title
+    $ctl.TbOverlaySub.Text      = 'Starting...'
+    $ctl.TbOverlayPct.Text      = ''
+    # Navigation stays live while a job runs. Browsing another page is harmless,
+    # Start-Work already refuses a second job, and disabling the list was what
+    # made WPF repaint the sidebar with its white disabled-state system brush.
+    $script:ProgLabel = $false
+    # Back to indeterminate for the next job until a worker reports a step.
+    foreach ($b in @($ctl.PbBusy, $ctl.PbTop)) { $b.IsIndeterminate = $true; $b.Value = 0 }
     $win.Cursor = if ($On) { [System.Windows.Input.Cursors]::AppStarting } else { $null }
 }
 
@@ -1195,14 +1349,16 @@ $script:Timer.Add_Tick({
     $script:Draining = $true
     $got = $false
     while ($script:Queue.TryDequeue([ref]$item)) {
-        if ($item) { Add-Activity $item.Level $item.Text; $got = $true }
+        if (-not $item) { continue }
+        if ($item.Level -eq 'PROG') { Set-Progress $item.Text; continue }   # not a log row
+        Add-Activity $item.Level $item.Text; $got = $true
     }
     $script:Draining = $false
     if ($got) { Update-LogScroll }
-    if ($script:Busy -and $script:JobStarted) {
-        $el = [int]((Get-Date) - $script:JobStarted).TotalSeconds
-        $ctl.TbOverlaySub.Text = if ($el -lt 3) { 'Progress appears in the activity log below.' }
-                                 else { "Running for $el second(s). Progress appears in the activity log below." }
+    # Show what is happening rather than counting seconds at the user. Once a
+    # worker starts reporting steps, Set-Progress owns this line instead.
+    if ($script:Busy -and -not $script:ProgLabel -and $ctl.TbLastStatus.Text) {
+        $ctl.TbOverlaySub.Text = $ctl.TbLastStatus.Text
     }
     if (-not $script:Job) { return }
     if (-not $script:Job.Handle.IsCompleted) { return }
@@ -1330,10 +1486,19 @@ function Find-ToolFolder {
     return $null
 }
 
+function Update-ToolBanner {
+    $ok = Test-IsToolFolder (Get-ToolDir)
+    $ctl.BdNoTool.Visibility = if ($ok) { 'Collapsed' } else { 'Visible' }
+    foreach ($b in @('BtnClean','BtnLoad','BtnVerify','BtnLaunch','BtnAll','BtnBaseline')) {
+        if (-not $script:Busy) { $ctl[$b].IsEnabled = $ok }
+    }
+}
+
 function Initialize-ToolFolder {
     # Called at startup. Keeps a valid saved value, otherwise goes looking.
     if (Test-IsToolFolder (Get-ToolDir)) {
         Add-Activity 'OK' "Package Deployer tool: $(Get-ToolDir)"
+        Update-ToolBanner
         return
     }
     $found = Find-ToolFolder
@@ -1342,12 +1507,13 @@ function Initialize-ToolFolder {
         Add-Activity 'OK' "Package Deployer tool found automatically: $found"
         Save-Settings
     } else {
-        $ctl.TxtTool.Text = ''
+        if (-not $ctl.TxtTool.Text) { $ctl.TxtTool.Text = Join-Path $script:AppDir 'PackageDeployertool' }
         Add-Activity 'WARN' "Microsoft's Package Deployer tool was not found on this machine."
-        Add-Activity 'OUT' "The Deploy page's 'Do all 1-4' needs it. The PAC CLI deploy above it does not."
+        Add-Activity 'OUT' "Only Clean / Load / Verify / Launch need it - 'Deploy package' with the PAC CLI does not."
         Add-Activity 'OUT' "Get it from the Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF NuGet package,"
-        Add-Activity 'OUT' "extract its tools\ folder, then click Browse next to 'Tool folder' on the Deploy page."
+        Add-Activity 'OUT' "extract its tools\ folder to $($ctl.TxtTool.Text), then restart - or click Browse on the Deploy page."
     }
+    Update-ToolBanner
 }
 
 function Test-ToolDir {
@@ -1549,8 +1715,12 @@ $script:WorkSolList = {
 
 $script:WorkExport = {
     $done = 0; $failed = 0; $made = @()
+    $steps = $A.Solutions.Count * $A.Kinds.Count
+    $n = 0
     foreach ($s in $A.Solutions) {
         foreach ($managed in $A.Kinds) {
+            $n++
+            WProg $n $steps ("exporting " + $s)
             $suffix = if ($managed) { '_managed' } else { '_unmanaged' }
             $file   = Join-Path $A.Dir ("{0}{1}.zip" -f $s, $suffix)
             WLog ("exporting {0} ({1})" -f $s, $(if ($managed) { 'managed' } else { 'unmanaged' }))
@@ -1588,6 +1758,8 @@ $script:WorkCreatePackage = {
         catch { WErr ("could not remove existing folder: " + $_.Exception.Message); return @{ ok = $false } }
     }
 
+    $steps = $A.Solutions.Count + 3
+    WProg 1 $steps "creating the package project"
     if ((RunCli -Exe 'pac' -Arguments @('package','init','-o',$name) -WorkDir $out) -ne 0) {
         WErr "pac package init failed."; return @{ ok = $false }
     }
@@ -1598,16 +1770,19 @@ $script:WorkCreatePackage = {
     foreach ($s in $A.Solutions) {
         $i++
         if (-not (Test-Path -LiteralPath $s)) { WWarn "not found, skipped: $s"; continue }
+        WProg (1 + $i) $steps ("adding " + (Split-Path -Leaf $s))
         WLog ("adding solution {0}/{1}: {2}" -f $i, $A.Solutions.Count, (Split-Path -Leaf $s))
         if ((RunCli -Exe 'pac' -Arguments @('package','add-solution','-p',$s) -WorkDir $proj) -ne 0) {
             WErr "add-solution failed for $s"; return @{ ok = $false }
         }
     }
 
+    WProg ($steps - 1) $steps "building the package (dotnet publish)"
     if ((RunCli -Exe 'dotnet' -Arguments @('publish') -WorkDir $proj) -ne 0) {
         WErr "dotnet publish failed."; return @{ ok = $false }
     }
 
+    WProg $steps $steps "locating the build output"
     WLog 'locating build output ...'
     $zip = @(Get-ChildItem -LiteralPath $proj -Recurse -File -Filter '*.pdpkg.zip' -ErrorAction SilentlyContinue |
              Sort-Object LastWriteTime -Descending | Select-Object -First 1)
@@ -1650,6 +1825,7 @@ $script:WorkLoad = {
     $t = $A.ToolDir; $src = $A.Source
     if (-not (Test-Path -LiteralPath $src)) { WErr "not found: $src"; return @{ ok = $false } }
 
+    WProg 1 4 "reading the package"
     $work = $src; $temp = $null
     if (Test-Path -LiteralPath $src -PathType Leaf) {
         if ([IO.Path]::GetExtension($src) -ne '.zip') { WErr "expected a folder or a .zip"; return @{ ok = $false } }
@@ -1674,9 +1850,11 @@ $script:WorkLoad = {
         $work = $temp
     }
 
+    WProg 2 4 "locating the package"
     $root = ResolvePackageRoot -Start $work
     if (-not $root) { WErr "no package found inside '$src'"; return @{ ok = $false } }
 
+    WProg 3 4 "copying into the tool folder"
     $copied = 0; $touched = New-Object System.Collections.Generic.List[string]
     foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory)) {
         if (-not (Test-Path -LiteralPath (Join-Path $d.FullName 'ImportConfig.xml'))) { continue }
@@ -1707,6 +1885,7 @@ $script:WorkLoad = {
 
     # Only the files we just brought in need unblocking, unless this is the
     # first run - that keeps Load fast instead of walking 550 tool files.
+    WProg 4 4 "unblocking files"
     if ($A.FullUnblock) {
         WLog "first run: unblocking the whole tool folder ..."
         $all = @(Get-ChildItem -LiteralPath $t -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
@@ -2217,7 +2396,7 @@ $ctl.BtnToolBrowse.Add_Click({
     $ctl.TxtTool.Text = $p
     if (Test-IsToolFolder $p) { Add-Activity 'OK' "Tool folder set: $p" }
     else { Add-Activity 'FAIL' "PackageDeployer.exe is not in that folder. Pick the folder that contains it." }
-    Update-State; Save-Settings
+    Update-ToolBanner; Update-State; Save-Settings
 })
 $ctl.BtnPkgFolder.Add_Click({
     $p = Select-FolderDialog -Description 'Select the package publish folder' -Start $ctl.TxtPkg.Text
@@ -2232,8 +2411,29 @@ $ctl.BtnDeployZip.Add_Click({
     if ($f -and $f.Count -gt 0) { $ctl.TxtDeployPkg.Text = $f[0]; Show-PackageSummary $f[0] 'Package'; Save-Settings }
 })
 $ctl.BtnDeployFolder.Add_Click({
-    $p = Select-FolderDialog -Description 'Select the package publish folder' -Start $ctl.TxtDeployPkg.Text
-    if ($p) { $ctl.TxtDeployPkg.Text = $p; Show-PackageSummary $p 'Package'; Save-Settings }
+    $p = Select-FolderDialog -Description 'Select the folder holding the package' -Start $ctl.TxtDeployPkg.Text
+    if (-not $p) { return }
+    # 'pac package deploy --package' wants a package zip or the package .dll,
+    # not a folder - so resolve the folder down to the right file.
+    $pick = $null
+    $zip = @(Get-ChildItem -LiteralPath $p -Recurse -File -Filter '*.pdpkg.zip' -ErrorAction SilentlyContinue |
+             Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+    if ($zip.Count -gt 0) { $pick = $zip[0].FullName }
+    else {
+        $dll = @(Get-ChildItem -LiteralPath $p -File -Filter *.dll -ErrorAction SilentlyContinue |
+                 Where-Object { $_.BaseName -notmatch $script:ProtectedRegex } | Select-Object -First 1)
+        if ($dll.Count -gt 0) { $pick = $dll[0].FullName }
+    }
+    if ($pick) {
+        $ctl.TxtDeployPkg.Text = $pick
+        Add-Activity 'OK' "Found the package in that folder: $(Split-Path -Leaf $pick)"
+        Show-PackageSummary $pick 'Package'
+    } else {
+        $ctl.TxtDeployPkg.Text = $p
+        Add-Activity 'WARN' "No .pdpkg.zip or package .dll in that folder - the CLI needs one of those."
+        Show-PackageSummary $p 'Package'
+    }
+    Save-Settings
 })
 $ctl.BtnDeployLogs.Add_Click({ if (Test-Path -LiteralPath $script:LogDir) { Start-Process explorer.exe $script:LogDir } })
 

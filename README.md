@@ -143,11 +143,27 @@ Two routes to the same place:
 | **Verify** | Exactly one package assembly, `ImportConfig.xml` parses, every solution zip it references exists, nothing still blocked. |
 | **Launch** | Starts `PackageDeployer.exe`. |
 
-#### Snapshot — do this once
+#### Which do I pick — zip or folder?
 
-With the tool folder clean, click **Snapshot** on the Deploy page. It records the
-files that ship with the tool, so **Clean** removes exactly what is foreign
-instead of guessing by filename.
+Both work, and the app tells you what it found after you choose.
+
+| | Accepts | Example |
+|---|---|---|
+| **Deploy package** (PAC CLI) | the `.pdpkg.zip`, or the package `.dll` | `...\bin\Debug\DeploymentPackage.1.0.0.pdpkg.zip` |
+| **Package to load** (GUI tool) | the `.pdpkg.zip` **or** the publish folder | `...\bin\Debug\net472\pdpublish` |
+
+`pac package deploy --package` takes a package zip or dll, not a folder — so if
+you pick a folder for the CLI field, the app finds the zip or dll inside it and
+uses that.
+
+#### What Snapshot does
+
+Click it **once**, while the tool folder has no package loaded. It writes down
+the ~550 files that ship with the Package Deployer tool, so **Clean** knows
+exactly which files are yours and removes only those.
+
+It is optional — without it, Clean falls back to matching file names — but the
+snapshot is safer.
 
 > This matters. The cleanup snippet in Microsoft's own runbook filters on
 > `^(Microsoft|System|Azure|Newtonsoft|SolutionPackagerLib)`. A stock tool folder
@@ -209,7 +225,7 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`, then push to `main`:
 
 ```bash
-git add -A && git commit -m "v1.3.0" && git push
+git add -A && git commit -m "v1.3.3" && git push
 ```
 
 That is the whole process. The workflow reads the version out of the script,
@@ -217,7 +233,7 @@ and if no release with that tag exists yet it creates the tag and publishes the
 release with the zip attached. Pushing again without bumping the version just
 refreshes the existing asset.
 
-You can also tag by hand (`git tag v1.3.0 && git push origin v1.3.0`) or run the
+You can also tag by hand (`git tag v1.3.3 && git push origin v1.3.3`) or run the
 workflow from the **Actions** tab.
 
 Every push additionally uploads the zip as a build artifact, so there is always
