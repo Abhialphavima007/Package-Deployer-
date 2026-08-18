@@ -71,6 +71,65 @@ pac install latest
 
 ---
 
+## macOS and Linux
+
+The desktop app is Windows-only, and that is not a limitation of this project:
+
+| | Why |
+|---|---|
+| The user interface | Built on **WPF**, which Microsoft ships for Windows only. There is no macOS port. |
+| `PackageDeployer.exe` | A Windows WPF application. Microsoft publishes no Mac build. |
+| `pac package deploy` | Microsoft's install docs list it under *"available only on Windows"*, with `pac data` and `pac package show`. |
+
+So instead there is **`pds`**, a companion that runs the same workflow in a
+terminal on macOS, Linux and Windows.
+
+```bash
+./install-mac.sh     # installs to ~/.local/share, no sudo
+pds                  # interactive menu
+pds doctor           # check pwsh, dotnet and pac
+```
+
+Needs [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-macos)
+(`brew install --cask powershell`) and the PAC CLI installed as a .NET tool
+(`dotnet tool install --global Microsoft.PowerApps.CLI.Tool`). The installer
+checks for both and offers to install the CLI for you.
+
+### What works on macOS
+
+| Feature | macOS | Notes |
+|---|---|---|
+| Sign in, switch connections | yes | `pac auth`, browser or device code |
+| Browse and select environments | yes | `pac env list` / `select` |
+| List solutions | yes | `pac solution list --json` |
+| Export solutions (managed/unmanaged) | yes | `pac solution export` |
+| Import a solution | yes | `pac solution import` |
+| Build a package | yes | `pac package init` / `add-solution` / `dotnet publish` |
+| **Deploy a package** | **partly** | see below |
+| Package Deployer GUI tool | no | Windows-only application |
+
+### Deploying from a Mac
+
+`pac package deploy` does not exist on macOS, so `pds deploy` reads the
+package's `ImportConfig.xml` and imports each solution **in the order the
+package declares**, honouring the per-solution `overwriteunmanagedcustomizations`
+and `publishworkflowsandactivateplugins` flags. It shows you the full plan and
+asks before touching anything.
+
+For a package that only ships solutions — most of them — this is equivalent.
+It does **not**:
+
+- run the package's own C# `ImportExtension` code (pre/post-import steps)
+- import configuration data files the package ships
+- apply runtime package settings
+
+`pds` detects those in the package and warns you before you start. If your
+package needs them, deploy from Windows — **`pds pipeline`** writes a GitHub
+Actions workflow that runs the real `pac package deploy` on a `windows-latest`
+runner, so you can trigger a proper deployment from your Mac.
+
+---
+
 ## Getting around
 
 **Sidebar** — Create Package, Deploy, Environment, Solutions. The hamburger

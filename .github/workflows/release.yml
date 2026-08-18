@@ -71,6 +71,23 @@ jobs:
           }
           Write-Host "Install.ps1 parses cleanly."
 
+      - name: Check the companion parses
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path ./pds.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object {
+              Write-Host "::error file=pds.ps1,line=$($_.Extent.StartLineNumber)::$($_.Message)"
+            }
+            exit 1
+          }
+          Write-Host "pds.ps1 parses cleanly."
+
+      - name: Check the shell installer parses
+        run: bash -n install-mac.sh && echo "install-mac.sh parses cleanly."
+
       - name: Check the XAML parses
         shell: pwsh
         run: |
@@ -100,6 +117,8 @@ jobs:
           mkdir -p "$STAGE"
           cp PackageDeployerStudio.ps1 PackageDeployerStudio.bat \
              Install.ps1 Install.cmd README.md LICENSE "$STAGE/"
+          cp pds.ps1 install-mac.sh "$STAGE/" 2>/dev/null || true
+          chmod +x "$STAGE/install-mac.sh" 2>/dev/null || true
           cp PackageDeployerStudio.ico  "$STAGE/" 2>/dev/null || true
           cp HOW-TO-DEPLOY-A-PACKAGE.md "$STAGE/" 2>/dev/null || true
           cd dist
@@ -145,6 +164,26 @@ jobs:
           ### Uninstall
 
           Apps and features, or `Install.ps1 -Uninstall`.
+
+          ---
+
+          ## macOS and Linux
+
+          The desktop app is WPF, which is Windows-only, as is Microsoft's
+          `pac package deploy`. The zip therefore also contains **`pds`**, a
+          terminal companion that runs the same workflow anywhere:
+
+          ```bash
+          ./install-mac.sh     # no sudo
+          pds                  # interactive menu
+          pds doctor           # check pwsh, dotnet and pac
+          ```
+
+          Sign-in, environments, solution export/import and package building all
+          work natively. Deployment imports each solution in the order the
+          package declares; `pds pipeline` generates a GitHub Actions workflow
+          that runs the real `pac package deploy` on a Windows runner when a
+          package needs full fidelity. See the macOS section of the README.
           NOTES_END
           echo "--- notes.md ---"; cat notes.md
 

@@ -19,6 +19,28 @@
 $ErrorActionPreference = 'Stop'
 $script:AppVersion = '1.3.3'
 
+# This app is WPF, which exists only on Windows. Say so plainly rather than
+# letting Add-Type fail with an assembly-not-found error.
+if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
+    $plat = if ($IsMacOS) { 'macOS' } else { 'Linux' }
+    Write-Host ''
+    Write-Host "  Package Deployer Studio is a Windows application." -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host "  You are on $plat. The user interface is built on WPF, which Microsoft"
+    Write-Host "  ships for Windows only, and the Package Deployer tool it drives"
+    Write-Host "  (PackageDeployer.exe) is a Windows application too."
+    Write-Host ''
+    Write-Host "  Use the cross-platform companion instead:" -ForegroundColor Cyan
+    Write-Host ''
+    Write-Host "      ./install-mac.sh      then      pds"
+    Write-Host ''
+    Write-Host "  It covers sign-in, environments, solution export and import,"
+    Write-Host "  building packages, and deploying by importing each solution in"
+    Write-Host "  order. See the macOS section of README.md."
+    Write-Host ''
+    exit 1
+}
+
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.IO.Compression.FileSystem
 
 # Concrete CLR types. Binding a WPF ListView straight to PSCustomObject is
