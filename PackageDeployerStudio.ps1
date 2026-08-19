@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.3.3'
+$script:AppVersion = '1.3.4'
 
 # This app is WPF, which exists only on Windows. Say so plainly rather than
 # letting Add-Type fail with an assembly-not-found error.
@@ -81,6 +81,9 @@ $script:BaselineFile = Join-Path $script:StateDir 'tool-baseline.txt'
 $script:SettingsFile = Join-Path $script:StateDir 'settings.json'
 $script:LogDir       = Join-Path $script:AppDir 'logs'
 $script:ExportDir    = Join-Path $script:AppDir 'exported-solutions'
+# Where PackageDeployer.exe keeps its token cache, its last-connection config
+# and its logs. Not the tool folder - that trips people up.
+$script:DeployerProfileDir = Join-Path $env:APPDATA 'Microsoft\PackageDeployer'
 
 $script:ProtectedRegex = '^(Microsoft|System|Azure|Newtonsoft|SolutionPackagerLib|netstandard|PackageDeployer|pacTelemetryUpload|Windows|mscorlib|Presentation)'
 
@@ -678,9 +681,23 @@ $xaml = @'
                   <Button x:Name="BtnAll"    Content="Do all 1-4" Style="{StaticResource BtnGo}" Margin="18,0,8,8"/>
                 </WrapPanel>
                 <WrapPanel>
-                  <CheckBox x:Name="ChkTokens"     Content="Delete cached sign-in when cleaning" IsChecked="True"/>
+                  <CheckBox x:Name="ChkTokens"     Content="Forget the sign-in when cleaning" IsChecked="True"
+                            ToolTip="Clears the cached account and the remembered environment, so the tool asks again."/>
                   <CheckBox x:Name="ChkAutoLaunch" Content="Launch after 'Do all'"/>
                 </WrapPanel>
+
+                <Border Background="{DynamicResource Surface2}" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        CornerRadius="4" Padding="12,10" Margin="0,12,0,0">
+                  <StackPanel>
+                    <TextBlock Text="Deploying again as a different account?" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,4"/>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,9"
+                               Text="Package Deployer caches your sign-in and the environment you picked, so a second run goes straight through without asking. Clear it and it will prompt again."/>
+                    <WrapPanel>
+                      <Button x:Name="BtnForget"      Content="Forget sign-in" Style="{StaticResource BtnPrimary}"/>
+                      <Button x:Name="BtnOpenPdCache" Content="Open cache folder"/>
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
               </StackPanel>
             </Border>
 
@@ -981,6 +998,7 @@ foreach ($n in @(
     'TxtDeployPkg','BtnDeployZip','BtnDeployFolder','BtnCliDeploy','BtnDeployLogs',
     'TxtTool','BtnToolBrowse','BtnBaseline','TxtPkg','BtnPkgFolder','BtnPkgZip','TbState',
     'BtnClean','BtnLoad','BtnVerify','BtnLaunch','BtnAll','ChkTokens','ChkAutoLaunch',
+    'BtnForget','BtnOpenPdCache',
     'TxtAuthName','ChkDeviceCode','BtnSignIn','BtnAuthList','BtnAuthSelect','BtnSignOut',
     'BtnEnvRefresh','BtnWhoAmI','LvEnvs','BtnEnvSelect','TbEnvCount',
     'ChkSysSolutions','BtnSolRefresh','LvSols','BtnSolAll','BtnSolNone','TbSolCount',
@@ -1836,8 +1854,23 @@ $script:WorkClean = {
         catch { WErr ("could not remove $($f.Name): " + $_.Exception.Message); return @{ ok = $false } }
     }
     if ($A.DeleteTokens) {
+        # The tool-folder copy is not the one that matters. Package Deployer
+        # caches its token as %APPDATA%\Microsoft\PackageDeployer\
+        # Default_PackageDeployer.tokens.dat and remembers the last environment
+        # in Default_PackageDeployer.exe.config beside it. Miss those two and
+        # it silently signs back in as the previous account on every run.
         $tok = Join-Path $t 'PackageDeployer.tokens.dat'
-        if (Test-Path -LiteralPath $tok) { try { Remove-Item -LiteralPath $tok -Force; $removed++ } catch { } }
+        if (Test-Path -LiteralPath $tok) {
+            try { Remove-Item -LiteralPath $tok -Force; WOk "forgot the tool-folder token"; $removed++ } catch { }
+        }
+        if ($A.ProfileDir -and (Test-Path -LiteralPath $A.ProfileDir)) {
+            foreach ($f in @(Get-ChildItem -LiteralPath $A.ProfileDir -File -ErrorAction SilentlyContinue |
+                             Where-Object { $_.Name -like '*.tokens.dat' -or $_.Name -like '*.exe.config' })) {
+                if (-not (InsidePath $f.FullName $A.ProfileDir)) { continue }   # never stray, never touch the logs
+                try { Remove-Item -LiteralPath $f.FullName -Force; WOk "forgot $($f.Name)"; $removed++ }
+                catch { WWarn "could not remove $($f.Name) - close Package Deployer and retry" }
+            }
+        }
     }
     if ($removed -eq 0) { WOk "Already clean." } else { WOk "Clean complete - $removed item(s) removed." }
     return @{ ok = $true }
@@ -2193,7 +2226,51 @@ function Invoke-Clean {
     Start-Work 'Cleaning the tool folder' $script:WorkClean @{
         ToolDir = (Get-ToolDir); BaselineFile = $script:BaselineFile
         ProtectedRegex = $script:ProtectedRegex; DeleteTokens = [bool]$ctl.ChkTokens.IsChecked
+        ProfileDir = $script:DeployerProfileDir
     } $script:DoneStep @{ Then = $Then }
+}
+
+function Clear-DeployerSignIn {
+    <#
+      Make Package Deployer ask for an account and environment again.
+
+      Deleting the token file alone is not enough - Default_PackageDeployer.exe.config
+      holds the last connection, so the tool would still preselect the previous
+      environment. Both go; the log files stay.
+    #>
+    Add-Activity 'STEP' 'Forget the Package Deployer sign-in'
+    $profileDir = $script:DeployerProfileDir
+    $tool       = Get-ToolDir
+    $removed    = 0
+
+    $targets = @()
+    if ($tool) { $targets += (Join-Path $tool 'PackageDeployer.tokens.dat') }
+    if (Test-Path -LiteralPath $profileDir) {
+        $targets += @(Get-ChildItem -LiteralPath $profileDir -File -ErrorAction SilentlyContinue |
+                      Where-Object { $_.Name -like '*.tokens.dat' -or $_.Name -like '*.exe.config' } |
+                      ForEach-Object { $_.FullName })
+    }
+
+    foreach ($f in $targets) {
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        $inProfile = Test-InsidePath $f $profileDir
+        $inTool    = $tool -and (Test-InsidePath $f $tool)
+        if (-not ($inProfile -or $inTool)) { continue }     # containment guard
+        try {
+            Remove-Item -LiteralPath $f -Force
+            Add-Activity 'OK' "forgot $(Split-Path -Leaf $f)"
+            $removed++
+        } catch {
+            Add-Activity 'FAIL' "could not remove $(Split-Path -Leaf $f) - close Package Deployer first"
+        }
+    }
+
+    if ($removed -eq 0) {
+        Add-Activity 'OK' "Nothing cached - Package Deployer will ask on the next run."
+    } else {
+        Add-Activity 'OK' "Cleared $removed file(s). Package Deployer will ask for an account and environment next time."
+    }
+    Add-Activity 'OUT' "Cache location: $profileDir"
 }
 
 function Invoke-Load {
@@ -2231,6 +2308,12 @@ function Invoke-Launch {
     try {
         Start-Process -FilePath (Join-Path (Get-ToolDir) 'PackageDeployer.exe') -WorkingDirectory (Get-ToolDir)
         Add-Activity 'OK' "PackageDeployer.exe started. Large packages take 45-120 minutes."
+        $cached = @(Get-ChildItem -LiteralPath $script:DeployerProfileDir -File -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -like '*.tokens.dat' })
+        if ($cached.Count -gt 0) {
+            Add-Activity 'WARN' "A cached sign-in exists, so it may not ask for an account or environment."
+            Add-Activity 'OUT'  "Close it, click 'Forget sign-in', and launch again to be prompted."
+        }
     } catch { Write-Err $_ 'starting the tool' }
 }
 
@@ -2458,6 +2541,14 @@ $ctl.BtnDeployFolder.Add_Click({
     Save-Settings
 })
 $ctl.BtnDeployLogs.Add_Click({ if (Test-Path -LiteralPath $script:LogDir) { Start-Process explorer.exe $script:LogDir } })
+$ctl.BtnForget.Add_Click({
+    if ($script:Busy) { Add-Activity 'WARN' "Wait for the current job to finish."; return }
+    try { Clear-DeployerSignIn } catch { Write-Err $_ 'forgetting the sign-in' }
+})
+$ctl.BtnOpenPdCache.Add_Click({
+    if (Test-Path -LiteralPath $script:DeployerProfileDir) { Start-Process explorer.exe $script:DeployerProfileDir }
+    else { Add-Activity 'WARN' "Nothing there yet: $script:DeployerProfileDir" }
+})
 
 # Environment
 $ctl.BtnSignIn.Add_Click({ Invoke-SignIn })

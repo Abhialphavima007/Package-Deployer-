@@ -215,6 +215,25 @@ Both work, and the app tells you what it found after you choose.
 you pick a folder for the CLI field, the app finds the zip or dll inside it and
 uses that.
 
+#### Deploying again as a different account
+
+After a successful deployment, Package Deployer signs you straight back in as
+the same account, to the same environment, without asking. It caches both:
+
+```
+%APPDATA%\Microsoft\PackageDeployer\
+ ├─ Default_PackageDeployer.tokens.dat     <- the account
+ └─ Default_PackageDeployer.exe.config     <- the last environment
+```
+
+Note the location: this is in **your user profile**, not the tool folder.
+Deleting `PackageDeployer.tokens.dat` from the tool folder does nothing.
+
+**Forget sign-in** on the Deploy page clears both, so the next launch prompts
+again. Cleaning does it too when *Forget the sign-in when cleaning* is ticked,
+and **Launch** warns you if a cached sign-in is present. Log files are never
+touched.
+
 #### What Snapshot does
 
 Click it **once**, while the tool folder has no package loaded. It writes down
@@ -243,6 +262,7 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 | Sign-in does nothing | Browser popup blocked | Tick **Use device code instead** |
 | `pac not found` | Installed after the app started | Restart the app so it picks up `PATH` |
 | "X is still running" in the log | You started a second action | Wait — this is the guard doing its job |
+| Package Deployer doesn't ask for an account or environment | Its sign-in is cached | **Forget sign-in** on the Deploy page |
 | `No Import packages found` | Files blocked by Windows | Run **Load** again |
 | `Multiple import packages were found` | Old package assembly left behind | **Clean**, then **Load** |
 | No environments listed | Not signed in, or no System Administrator role | Sign in; check your role |
@@ -284,7 +304,7 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`, then push to `main`:
 
 ```bash
-git add -A && git commit -m "v1.3.3" && git push
+git add -A && git commit -m "v1.3.4" && git push
 ```
 
 That is the whole process. The workflow reads the version out of the script,
@@ -292,7 +312,7 @@ and if no release with that tag exists yet it creates the tag and publishes the
 release with the zip attached. Pushing again without bumping the version just
 refreshes the existing asset.
 
-You can also tag by hand (`git tag v1.3.3 && git push origin v1.3.3`) or run the
+You can also tag by hand (`git tag v1.3.4 && git push origin v1.3.4`) or run the
 workflow from the **Actions** tab.
 
 Every push additionally uploads the zip as a build artifact, so there is always
