@@ -32,7 +32,7 @@
 param([Parameter(Position = 0)][string]$Command = '')
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.3.4'
+$script:AppVersion = '1.4.0'
 
 # ---------------------------------------------------------------------------
 # Platform
@@ -749,6 +749,30 @@ jobs:
 # ---------------------------------------------------------------------------
 # Doctor
 # ---------------------------------------------------------------------------
+function Show-Region {
+    <#
+      Confirm which public IP your traffic leaves from. A split-tunnel VPN can
+      route only some subnets, so being "on the VPN" does not guarantee that
+      Dataverse traffic goes through it.
+    #>
+    Head "Outbound region"
+    $url = (Get-Cfg).RegionUrl ?? 'https://ipinfo.io/json'
+    Info "Contacting $url"
+    Info "This is the only outbound call this tool makes on its own."
+    W ''
+    try { $r = Invoke-RestMethod -Uri $url -TimeoutSec 20 -ErrorAction Stop }
+    catch { Bad "Could not reach the lookup service: $($_.Exception.Message)"; return }
+
+    if (-not $r.ip) { Bad "No IP in the response."; return }
+    Ok "Public IP : $($r.ip)"
+    $loc = (@($r.city, $r.region, $r.country) | Where-Object { $_ }) -join ', '
+    if ($loc)   { Ok "Location  : $loc" }
+    if ($r.org) { Ok "Network   : $($r.org)" }
+    W ''
+    Info "Not the region you expect? The VPN is not carrying this traffic."
+    Info "Split tunnels commonly send Microsoft endpoints out directly."
+}
+
 function Invoke-Doctor {
     Head "Toolchain check"
     Info ("Platform        : {0}" -f $script:Plat)
@@ -807,6 +831,7 @@ function Show-Menu {
         W "   12  Generate a Windows deploy pipeline"
         W ''
         W "   13  Toolchain check"
+        W "   14  Check outbound region (VPN)"
         W "    q  Quit"
         W ''
         $c = (Read-Host "  choose").Trim().ToLower()
@@ -825,6 +850,7 @@ function Show-Menu {
                 '11' { Invoke-Deploy;            Pause-Key }
                 '12' { New-WindowsWorkflow;      Pause-Key }
                 '13' { Invoke-Doctor;            Pause-Key }
+                '14' { Show-Region;              Pause-Key }
                 'q'  { W ''; return }
                 default { }
             }
@@ -852,10 +878,11 @@ switch ($Command.ToLower()) {
     'package'    { Banner; New-Package }
     'deploy'     { Banner; Invoke-Deploy }
     'pipeline'   { Banner; New-WindowsWorkflow }
+    'region'     { Banner; Show-Region; W '' }
     default {
         Banner
         Bad "Unknown command '$Command'."
-        Info "Try: doctor, signin, envs, solutions, export, import, package, deploy, pipeline"
+        Info "Try: doctor, region, signin, envs, solutions, export, import, package, deploy, pipeline"
         W ''
     }
 }

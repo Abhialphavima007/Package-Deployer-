@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.3.4'
+$script:AppVersion = '1.4.0'
 
 # This app is WPF, which exists only on Windows. Say so plainly rather than
 # letting Add-Type fail with an assembly-not-found error.
@@ -84,6 +84,9 @@ $script:ExportDir    = Join-Path $script:AppDir 'exported-solutions'
 # Where PackageDeployer.exe keeps its token cache, its last-connection config
 # and its logs. Not the tool folder - that trips people up.
 $script:DeployerProfileDir = Join-Path $env:APPDATA 'Microsoft\PackageDeployer'
+# Used only by the "Check region" button, never automatically. Override it in
+# .pdstudio\settings.json with "RegionUrl" to point at an internal endpoint.
+$script:RegionUrl = 'https://ipinfo.io/json'
 
 $script:ProtectedRegex = '^(Microsoft|System|Azure|Newtonsoft|SolutionPackagerLib|netstandard|PackageDeployer|pacTelemetryUpload|Windows|mscorlib|Presentation)'
 
@@ -920,6 +923,8 @@ $xaml = @'
                 <ComboBoxItem Content="Problems only"/>
               </ComboBox>
               <Button x:Name="BtnSelfTest" Content="Self-test"     Style="{StaticResource BtnTiny}"/>
+              <Button x:Name="BtnRegion"   Content="Check region" Style="{StaticResource BtnTiny}"
+                      ToolTip="Look up the public IP and location your traffic leaves from. Confirms the VPN is actually carrying it."/>
               <Button x:Name="BtnOpenLogs" Content="Deployer logs" Style="{StaticResource BtnTiny}"/>
               <Button x:Name="BtnSaveLog"  Content="Save"          Style="{StaticResource BtnTiny}"/>
               <Button x:Name="BtnClearLog" Content="Clear"         Style="{StaticResource BtnTiny}"/>
@@ -1005,7 +1010,7 @@ foreach ($n in @(
     'TxtExportDir','BtnExportDir','ChkExpManaged','ChkExpUnmanaged','ChkExpToPackage','BtnExport','BtnOpenExport',
     'TxtImportZip','BtnImportPick','ChkImpPublish','ChkImpActivate','ChkImpForce','ChkImpUpgrade','BtnImport',
     'RowLog','BtnLogToggle','IcLogChevron','TbLastStatus','CmbFilter','LvLog','LogHost',
-    'BtnSelfTest','BtnOpenLogs','BtnSaveLog','BtnClearLog')) {
+    'BtnSelfTest','BtnRegion','BtnOpenLogs','BtnSaveLog','BtnClearLog')) {
     $ctl[$n] = $win.FindName($n)
 }
 
@@ -2043,6 +2048,41 @@ $script:WorkSignIn = {
     return @{ ok = $true }
 }
 
+$script:WorkRegion = {
+    <#
+      Where does this machine's traffic actually leave from?
+
+      A split-tunnel VPN routes only some subnets, so it is entirely possible to
+      be "on the VPN" while Dataverse traffic still leaves via the local ISP.
+      This asks an external service what public IP it sees, which is the only
+      thing that reliably answers the question before a long deployment.
+      The URL is configurable so it can point at an internal endpoint instead.
+    #>
+    WStep 'Checking the outbound address'
+    WOut "Calling $($A.Url) - the only outbound call this app makes on its own."
+    try {
+        $r = Invoke-RestMethod -Uri $A.Url -TimeoutSec 20 -ErrorAction Stop
+    } catch {
+        WErr ("Could not reach the lookup service: " + $_.Exception.Message)
+        WOut "That may itself mean the tunnel blocks it. Check with your usual tooling."
+        return @{ ok = $false }
+    }
+
+    $ip  = $r.ip
+    $org = $r.org
+    # -join, not Join-String: this app runs on Windows PowerShell 5.1.
+    $loc = (@($r.city, $r.region, $r.country) | Where-Object { $_ }) -join ', '
+    if (-not $ip) { WErr "The service returned no IP field."; return @{ ok = $false } }
+
+    WOk  "Public IP : $ip"
+    if ($loc) { WOk "Location  : $loc" }
+    if ($org) { WOk "Network   : $org" }
+    WOut ''
+    WOut "If that is not the region you expect, your VPN is not carrying this"
+    WOut "traffic - a split tunnel will often route Microsoft endpoints directly."
+    return @{ ok = $true; ip = $ip }
+}
+
 $script:WorkSelfTest = {
     WOut ("PowerShell {0}" -f $PSVersionTable.PSVersion)
     WOut ("Temp folder: {0}" -f $env:TEMP)
@@ -2387,6 +2427,7 @@ function Import-Settings {
         if ($s.ExportDir) { $ctl.TxtExportDir.Text = $s.ExportDir }
         if ($s.DeployPkg) { $ctl.TxtDeployPkg.Text = $s.DeployPkg }
         if ($s.Solutions) { foreach ($x in $s.Solutions) { if ($x) { [void]$ctl.LstSolutions.Items.Add($x) } } }
+        if ($s.RegionUrl) { $script:RegionUrl = [string]$s.RegionUrl }
         if ($s.Theme -in @('Light','Dark')) { $script:Theme = $s.Theme }
         if ($null -ne $s.Sidebar) { $script:SidebarOpen = [bool]$s.Sidebar }
     } catch { }
@@ -2605,6 +2646,12 @@ $ctl.BtnSelfTest.Add_Click({
     else { Add-Activity 'WARN' "baseline not recorded" }
     Start-Work 'Running self-test' $script:WorkSelfTest @{}
 })
+$ctl.BtnRegion.Add_Click({
+    $cfg = $script:RegionUrl
+    Add-Activity 'OUT' "Region check contacts an external service to learn your public IP."
+    Start-Work 'Checking the outbound region' $script:WorkRegion @{ Url = $cfg }
+})
+
 $ctl.BtnOpenLogs.Add_Click({
     $p = Join-Path $env:APPDATA 'Microsoft\PackageDeployer'
     if (Test-Path -LiteralPath $p) { Start-Process explorer.exe $p } else { Add-Activity 'WARN' "No Package Deployer logs yet." }

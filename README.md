@@ -250,6 +250,48 @@ snapshot is safer.
 
 ---
 
+## Working behind a VPN
+
+**It just works.** The app opens no sockets of its own — it runs `pac` and
+launches `PackageDeployer.exe`, both of which use the system network stack. Any
+VPN that installs a virtual adapter and routes traffic is transparent to them.
+Nothing here binds an interface, pins DNS, or bypasses the system proxy.
+
+If you use a VPN so that deployments originate from a particular region, four
+things are worth knowing.
+
+**1. Connect the VPN before you sign in, not after.**
+Access tokens are issued against the IP you had at sign-in, and they are then
+cached. Sign in first and connect afterwards and your token still carries the
+old address — which defeats the point if Conditional Access is keyed to a named
+location. If you have already signed in from the wrong network, use **Forget
+sign-in** (Deploy page) or `pac auth clear`, connect, then sign in again.
+
+**2. Verify, don't assume — split tunnels are the usual culprit.**
+Click **Check region** in the activity toolbar (or `pds region` on macOS). It
+reports the public IP, location and network your traffic actually leaves from.
+A split-tunnel VPN routes only certain subnets, and Microsoft endpoints are
+very often excluded by design, so you can be "on the VPN" while Dataverse
+traffic still goes out over your local ISP.
+
+> This is the only outbound call the app makes on its own, it happens only when
+> you click the button, and the endpoint is configurable — set `"RegionUrl"` in
+> `.pdstudio\settings.json` to point at an internal service instead.
+
+**3. A dropped VPN will kill a long deployment.**
+Package deployments run 45–120 minutes. If the tunnel has an idle timeout or
+re-authenticates mid-run, the import fails partway — leaving some solutions in
+and some out. Disable idle disconnect for the duration, keep the machine awake,
+and read the log before retrying.
+
+**4. Corporate proxies and TLS inspection are separate from the VPN.**
+`pac` honours `HTTPS_PROXY` / `HTTP_PROXY`; `PackageDeployer.exe` is .NET
+Framework and follows the system/WinINET proxy settings. If your gateway does
+TLS inspection, its root certificate must be in the Windows trust store or
+`pac` will fail with certificate errors that have nothing to do with this app.
+
+---
+
 ## Troubleshooting
 
 Click **Self-test** in the log toolbar. It reports PowerShell version, STA mode,
@@ -304,7 +346,7 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`, then push to `main`:
 
 ```bash
-git add -A && git commit -m "v1.3.4" && git push
+git add -A && git commit -m "v1.4.0" && git push
 ```
 
 That is the whole process. The workflow reads the version out of the script,
@@ -312,7 +354,7 @@ and if no release with that tag exists yet it creates the tag and publishes the
 release with the zip attached. Pushing again without bumping the version just
 refreshes the existing asset.
 
-You can also tag by hand (`git tag v1.3.4 && git push origin v1.3.4`) or run the
+You can also tag by hand (`git tag v1.4.0 && git push origin v1.4.0`) or run the
 workflow from the **Actions** tab.
 
 Every push additionally uploads the zip as a build artifact, so there is always
