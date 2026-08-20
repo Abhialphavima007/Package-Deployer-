@@ -17,6 +17,10 @@ param(
     [switch]$NoDesktopShortcut,
     [switch]$Unblock,          # unblock without asking
     [switch]$NoUnblock,        # skip unblocking without asking
+    [switch]$WithTool,         # install the Package Deployer tool without asking
+    [switch]$NoTool,           # never ask about the Package Deployer tool
+    [string]$ToolPath = '',    # a folder you already have that holds PackageDeployer.exe
+    [string]$ToolInstallDir = '',   # where to put it; a PackageDeployertool folder is created inside
     [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\PackageDeployerStudio')
 )
 
@@ -48,6 +52,30 @@ function Confirm-Box {
         $a = Read-Host "  $Text  [Y/n]"
         return ($a -eq '' -or $a -match '^(y|yes)$')
     }
+}
+
+function Select-FolderModern {
+    <#
+      The Explorer folder picker, not the old tree control: an OpenFileDialog
+      with name validation off shows the modern dialog, and we take the folder
+      it lands in. The caller asks for a PARENT folder and creates its own
+      subfolder inside, so there is never a need to invent a new folder here.
+    #>
+    param([string]$Description, [string]$Start)
+    try { Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop } catch { return $null }
+    $d = New-Object System.Windows.Forms.OpenFileDialog
+    $d.Title           = "$Description  -  open the folder, then click Select"
+    $d.ValidateNames   = $false
+    $d.CheckFileExists = $false
+    $d.CheckPathExists = $true
+    $d.Multiselect     = $false
+    $d.Filter          = 'Folders|*.this-never-matches'
+    $d.FileName        = 'Select this folder'
+    if ($Start -and (Test-Path -LiteralPath $Start)) { $d.InitialDirectory = $Start }
+    if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return $null }
+    $p = Split-Path -Parent $d.FileName
+    if (Test-Path -LiteralPath $d.FileName -PathType Container) { $p = $d.FileName }
+    return $p
 }
 
 function Get-FullPathSafe {
@@ -167,11 +195,76 @@ function Find-ExistingTool {
     return $null
 }
 
+function Get-PackageDeployerTool {
+    <#
+      Fetch Microsoft's Package Deployer tool from their own NuGet feed.
+
+      Far better than asking someone who has just downloaded this app to go and
+      find a PackageDeployer.exe they have never heard of. The package is a zip;
+      we pull the newest stable version and look for the exe wherever it sits,
+      rather than assuming a folder layout.
+    #>
+    param([string]$Dest)
+
+    $id   = 'microsoft.crmsdk.xrmtooling.packagedeployment.wpf'
+    $base = "https://api.nuget.org/v3-flatcontainer/$id"
+    $tmp  = Join-Path $env:TEMP ("pdtool_" + [Guid]::NewGuid().ToString('N').Substring(0,8))
+    $oldProgress = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'      # the built-in bar makes this crawl
+
+    try {
+        try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch { }
+
+        Say "asking nuget.org for the current version ..."
+        $idx = Invoke-RestMethod -Uri "$base/index.json" -TimeoutSec 60 -UseBasicParsing
+        $ver = $idx.versions |
+               Where-Object { $_ -notmatch '-' } |
+               Sort-Object { try { [version]$_ } catch { [version]'0.0' } } |
+               Select-Object -Last 1
+        if (-not $ver) { Bad "No stable version listed on nuget.org."; return $null }
+
+        New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+        $zip = Join-Path $tmp "tool.zip"          # .nupkg is a zip; Expand-Archive wants the extension
+        Say "downloading version $ver - about 30 MB, this takes a minute ..."
+        Invoke-WebRequest -Uri "$base/$ver/$id.$ver.nupkg" -OutFile $zip -TimeoutSec 900 -UseBasicParsing
+
+        Say "extracting ..."
+        $ex = Join-Path $tmp 'x'
+        Expand-Archive -LiteralPath $zip -DestinationPath $ex -Force
+
+        $exe = Get-ChildItem -LiteralPath $ex -Recurse -File -Filter 'PackageDeployer.exe' -ErrorAction SilentlyContinue |
+               Select-Object -First 1
+        if (-not $exe) { Bad "PackageDeployer.exe was not inside that package."; return $null }
+
+        if (-not (Test-Path -LiteralPath $Dest)) { New-Item -ItemType Directory -Path $Dest -Force | Out-Null }
+        Copy-Item -Path (Join-Path $exe.Directory.FullName '*') -Destination $Dest -Recurse -Force
+        if (Test-ToolFolder $Dest) { return $Dest }
+        Bad "Copied the files but PackageDeployer.exe is not where expected."
+        return $null
+    } catch {
+        Bad "Download failed: $($_.Exception.Message)"
+        info "You can add the tool later from the Deploy page - nothing else is affected."
+        return $null
+    } finally {
+        $ProgressPreference = $oldProgress
+        Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 $configuredTool = $null
-if (Test-ToolFolder $toolDir) {
+
+if ($ToolPath) {
+    if (Test-ToolFolder $ToolPath) { $configuredTool = $ToolPath; Good "using the tool folder you specified: $ToolPath" }
+    else { Bad "-ToolPath does not contain PackageDeployer.exe: $ToolPath" }
+}
+
+if (-not $configuredTool -and (Test-ToolFolder $toolDir)) {
     $configuredTool = $toolDir
-    Say "Package Deployer tool already installed"
-} else {
+    Good "Package Deployer tool already present"
+}
+
+if (-not $configuredTool) {
+    # Look around quietly first. Most people never see a prompt at all.
     $found = Find-ExistingTool
     if ($found) {
         if ((Get-FullPathSafe $found) -like ((Get-FullPathSafe $Source) + '*')) {
@@ -181,37 +274,68 @@ if (Test-ToolFolder $toolDir) {
             Good "copied the Package Deployer tool into the install folder"
         } else {
             $configuredTool = $found
-            Good "found the Package Deployer tool at $found"
-        }
-    } else {
-        Write-Host ""
-        Note "Microsoft's Package Deployer tool was not found."
-        if (Confirm-Box @"
-Microsoft's Package Deployer tool was not found on this machine.
-
-It is not redistributed with this app. The Deploy page's Clean / Load / Verify /
-Launch steps need it; deploying with the PAC CLI does not.
-
-Do you have it already and want to point at it now?
-
-Yes - browse for the folder containing PackageDeployer.exe
-No  - skip; you can set it later on the Deploy page
-"@ "$AppName - Package Deployer tool") {
-            Add-Type -AssemblyName System.Windows.Forms
-            $dlg = New-Object System.Windows.Forms.OpenFileDialog
-            $dlg.Title = 'Locate PackageDeployer.exe'
-            $dlg.Filter = 'PackageDeployer.exe|PackageDeployer.exe|All files (*.*)|*.*'
-            if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-                $picked = Split-Path -Parent $dlg.FileName
-                if (Test-ToolFolder $picked) { $configuredTool = $picked; Good "using $picked" }
-                else { Bad "PackageDeployer.exe was not in that folder" }
-            }
+            Good "found the Package Deployer tool already on this machine: $found"
         }
     }
 }
 
-if (-not $configuredTool) {
-    Note "No tool folder configured. Set it on the Deploy page when you have one."
+if (-not $configuredTool -and -not $NoTool) {
+    # Never a "go and find PackageDeployer.exe" file picker - someone installing
+    # this for the first time has no idea what that is. Install it for them,
+    # into a folder they choose.
+    $want = $WithTool
+    if (-not $want) {
+        $want = Confirm-Box @"
+Install Microsoft's Package Deployer tool now?
+
+$AppName drives Microsoft's Package Deployer tool. Microsoft does not permit it
+to be bundled here, so it is downloaded from their official NuGet feed - about
+30 MB. You will be asked where to put it.
+
+Yes  - install it and configure the path automatically (recommended)
+No   - skip it for now; you can add it later from the Deploy page
+
+Skipping is fine: signing in, browsing environments, exporting and importing
+solutions, building packages and deploying with the Power Platform CLI all
+work without it.
+"@ "$AppName - Package Deployer tool"
+    }
+
+    if ($want) {
+        # Ask for a PARENT folder and create PackageDeployertool inside it, so
+        # the destination is predictable and no new folder has to be invented
+        # in the dialog.
+        $parent = $ToolInstallDir
+        if (-not $parent) {
+            Write-Host ""
+            Say "Choose where to install it - a 'PackageDeployertool' folder is created inside."
+            Say "Default is the app's own folder: $InstallDir"
+            $parent = Select-FolderModern "Where should Microsoft's Package Deployer tool go?" $InstallDir
+            if (-not $parent) {
+                $parent = $InstallDir
+                Note "no folder chosen - using the app folder"
+            }
+        }
+        if (-not (Test-Path -LiteralPath $parent)) {
+            try { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+            catch { Bad "Cannot create $parent - using the app folder instead"; $parent = $InstallDir }
+        }
+
+        $dest = if ((Split-Path -Leaf $parent) -ieq 'PackageDeployertool') { $parent }
+                else { Join-Path $parent 'PackageDeployertool' }
+
+        Write-Host ""
+        Say "Installing to $dest"
+        $configuredTool = Get-PackageDeployerTool -Dest $dest
+        if ($configuredTool) {
+            Good "Package Deployer tool installed"
+            Good "path configured for the app: $configuredTool"
+        } else {
+            Note "Add it later from the Deploy page - nothing else is affected."
+        }
+    } else {
+        Say "skipped the Package Deployer tool"
+    }
 }
 
 # ------------------------------------------------------------------- unblock
@@ -315,24 +439,36 @@ try {
 } catch { Note "could not write settings.json: $($_.Exception.Message)" }
 
 Write-Host ""
-Good "Installed."
+Write-Host "  ---------------------------------------------" -ForegroundColor DarkGray
+Good "Installed to $InstallDir"
 Write-Host ""
+Write-Host "  What you can do now" -ForegroundColor Cyan
 
-if (-not (Test-Path -LiteralPath $toolDir)) {
-    Note "One thing left to do:"
-    Note "Microsoft's PackageDeployertool folder is not redistributed with this app."
-    Note "Copy it into:  $InstallDir"
-    Note "Get it from the Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF NuGet package."
-    Write-Host ""
+$hasPac    = [bool](Get-Command 'pac'    -ErrorAction SilentlyContinue)
+$hasDotnet = [bool](Get-Command 'dotnet' -ErrorAction SilentlyContinue)
+
+if ($hasPac) {
+    Good "Sign in, browse environments, export and import solutions"
+    Good "Deploy a package with the Power Platform CLI"
+} else {
+    Note "Sign in / solutions / CLI deploy need the Power Platform CLI:"
+    Note "    dotnet tool install --global Microsoft.PowerApps.CLI.Tool"
+}
+if ($hasDotnet) { Good "Build packages (pac package init + dotnet publish)" }
+else            { Note "Building packages needs the .NET SDK: https://dotnet.microsoft.com/download" }
+
+if ($configuredTool) {
+    Good "Drive the Package Deployer GUI tool (Clean / Load / Verify / Launch)"
+    Say  "    tool folder: $configuredTool"
+} else {
+    Note "The Package Deployer GUI steps are not set up yet - entirely optional."
+    Note "Add the tool any time: Deploy page, then Browse next to 'Tool folder',"
+    Note "or run this installer again and answer Yes to the download."
 }
 
-foreach ($e in @('pac','dotnet')) {
-    if (Get-Command $e -ErrorAction SilentlyContinue) { Good "$e found on PATH" }
-    else { Note "$e is not on PATH - the Solutions and Create Package pages need it" }
-}
-
 Write-Host ""
-Say "Launch it from the Start Menu, or run: $target"
+Say "Start it from the Start Menu, the desktop shortcut, or:"
+Say "  $target"
 Write-Host ""
 
 if (Confirm-Box "Installation finished.`r`n`r`nStart $AppName now?" $AppName) {

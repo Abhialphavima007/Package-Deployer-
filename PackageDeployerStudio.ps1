@@ -17,7 +17,7 @@
 #>
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.4.0'
+$script:AppVersion = '1.4.2'
 
 # This app is WPF, which exists only on Windows. Say so plainly rather than
 # letting Add-Type fail with an assembly-not-found error.

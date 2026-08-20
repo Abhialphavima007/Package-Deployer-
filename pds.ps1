@@ -32,7 +32,7 @@
 param([Parameter(Position = 0)][string]$Command = '')
 
 $ErrorActionPreference = 'Stop'
-$script:AppVersion = '1.4.0'
+$script:AppVersion = '1.4.2'
 
 # ---------------------------------------------------------------------------
 # Platform

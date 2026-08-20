@@ -20,24 +20,44 @@ The installer needs no admin rights. It copies the app to
 `%LOCALAPPDATA%\Programs\PackageDeployerStudio`, unblocks it, creates Start Menu
 and desktop shortcuts, and registers an entry in **Apps and features**.
 
-### The Package Deployer tool
+### The Package Deployer tool — installed for you
 
-Microsoft's `PackageDeployertool` is **not** redistributed here. The installer
-sorts it out for you:
+Microsoft's Package Deployer tool cannot be bundled here, so the installer
+obtains and configures it as part of setup:
 
-1. If it sits next to `Install.cmd`, it is copied into the install folder.
-2. Otherwise it searches your NuGet package cache — if you have ever restored
+1. If it sits next to `Install.cmd`, it is copied in.
+2. Otherwise your NuGet cache is checked — if you have ever restored
    `Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF`, it is already on disk.
-3. Failing that, it offers to let you browse for `PackageDeployer.exe`.
+3. Still nothing? You are asked whether to install it (~30 MB, from Microsoft's
+   official NuGet feed), then **you choose the folder**. A `PackageDeployertool`
+   folder is created inside whatever you pick, defaulting to the app's own
+   folder.
 
-Whatever it finds is written into the app's settings, so the Deploy page is
-configured on first launch. The app repeats the same search at startup if the
-configured folder ever goes missing.
+Either way the resulting path is written into the app's settings, so the Deploy
+page is configured and ready on first launch — you never have to go hunting for
+`PackageDeployer.exe`.
 
-Don't have it? Get it from the
-[Package Deployer NuGet package](https://www.nuget.org/packages/Microsoft.CrmSdk.XrmTooling.PackageDeployment.WPF)
-and extract its `tools\` folder. You only need it for the **Clean / Load /
-Verify / Launch** steps — deploying with the PAC CLI does not use it at all.
+Answering **No** is fine too. You only need the tool for the **Clean / Load /
+Verify / Launch** route. Signing in, browsing environments, exporting and
+importing solutions, building packages, and deploying with the Power Platform
+CLI all work without it, and you can add it later from the Deploy page or by
+running the installer again.
+
+**Unattended install:**
+
+```powershell
+# install the tool into the app folder, no questions asked
+powershell -ExecutionPolicy Bypass -File Install.ps1 -Unblock -WithTool
+
+# install it somewhere specific (a PackageDeployertool folder is made inside)
+powershell -ExecutionPolicy Bypass -File Install.ps1 -Unblock -WithTool -ToolInstallDir "D:\Tools"
+
+# point at a copy you already have
+powershell -ExecutionPolicy Bypass -File Install.ps1 -Unblock -ToolPath "D:\Tools\PackageDeployertool"
+
+# skip it entirely
+powershell -ExecutionPolicy Bypass -File Install.ps1 -Unblock -NoTool
+```
 
 **Uninstall** — Apps and features, or `Install.ps1 -Uninstall`. Your
 `PackageDeployertool` folder is left alone.
@@ -346,7 +366,7 @@ UI pump health, tool folder, baseline, and the resolved paths and versions of
 Bump `$script:AppVersion` in `PackageDeployerStudio.ps1`, then push to `main`:
 
 ```bash
-git add -A && git commit -m "v1.4.0" && git push
+git add -A && git commit -m "v1.4.2" && git push
 ```
 
 That is the whole process. The workflow reads the version out of the script,
@@ -354,7 +374,7 @@ and if no release with that tag exists yet it creates the tag and publishes the
 release with the zip attached. Pushing again without bumping the version just
 refreshes the existing asset.
 
-You can also tag by hand (`git tag v1.4.0 && git push origin v1.4.0`) or run the
+You can also tag by hand (`git tag v1.4.2 && git push origin v1.4.2`) or run the
 workflow from the **Actions** tab.
 
 Every push additionally uploads the zip as a build artifact, so there is always
